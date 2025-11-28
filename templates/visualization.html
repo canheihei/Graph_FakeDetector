@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>数据可视化</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 可选：引入 Chart.js 用于真实图表 -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-4xl mx-auto">
+    <h2 class="text-xl font-bold mb-4">统计可视化</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white p-4 rounded shadow">
+        <h3 class="font-semibold mb-2">实体类型分布</h3>
+        <div class="h-40 flex items-center justify-center text-gray-500">
+          📈 模拟饼图（后端加载中...）
+        </div>
+      </div>
+      <div class="bg-white p-4 rounded shadow">
+        <h3 class="font-semibold mb-2">图谱关系增长趋势</h3>
+        <div class="h-40 flex items-center justify-center text-gray-500">
+          📉 模拟折线图（后端加载中...）
+        </div>
+      </div>
+      <div class="bg-white p-4 rounded shadow md:col-span-2">
+        <h3 class="font-semibold mb-2">最近识别任务统计</h3>
+        <ul class="space-y-2">
+          <li class="flex justify-between"><span>今日识别图片数：</span><strong>42</strong></li>
+          <li class="flex justify-between"><span>新增实体数：</span><strong>128</strong></li>
+          <li class="flex justify-between"><span>平均响应时间：</span><strong>1.8s</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <a href="index.html" class="mt-6 inline-block text-gray-600 hover:underline">← 返回</a>
+  </div>
+</body>
+</html>

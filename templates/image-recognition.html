@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>图片识别</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-2xl mx-auto">
+    <h2 class="text-xl font-bold mb-4">图片识别</h2>
+
+    <input type="file"
+           id="imageFile"
+           accept="image/*"
+           class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+
+    <div id="messageChain" class="mt-6 space-y-2 min-h-[100px] border border-gray-200 rounded p-4 bg-white">
+      <!-- 后端消息将动态插入此处 -->
+    </div>
+
+    <a href="index.html" class="mt-4 inline-block text-gray-600 hover:underline">← 返回</a>
+  </div>
+
+  <script>
+    document.getElementById('imageFile').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const messages = [
+        "✅ 图片上传成功",
+        "🔍 正在提取图像特征...",
+        "🧠 调用大模型进行理解...",
+        "🔗 生成关联知识图谱节点...",
+        "📤 识别完成！共发现 5 个实体和 3 条关系"
+      ];
+
+      const container = document.getElementById('messageChain');
+      container.innerHTML = ''; // 清空
+
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < messages.length) {
+          const msgDiv = document.createElement('div');
+          msgDiv.className = 'p-2 bg-gray-100 rounded text-sm';
+          msgDiv.textContent = messages[i];
+          container.appendChild(msgDiv);
+          container.scrollTop = container.scrollHeight; // 滚动到底部
+          i++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 800);
+    });
+  </script>
+</body>
+</html>
