@@ -1,10 +1,12 @@
 import json
-from langchain.prompts import PromptTemplate
+import os
+import threading
+
 from langchain.chains import LLMChain
 from openai import OpenAI
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from config import ALI_API_KEY, ALI_BASE_URL
+from service.common_utils import extract_json
 
 # LLM 初始化（阿里百炼兼容模式）
 client = OpenAI(
@@ -12,117 +14,29 @@ client = OpenAI(
     base_url=ALI_BASE_URL
 )
 
-def build_llm_chain():
-    with open("prompts/domain_evolution.md", "r", encoding="utf-8") as f:
-        prompt_text = f.read()
-
-    prompt = PromptTemplate(
-        input_variables=["domain_name", "existing_schema", "images"],
-        template=prompt_text,
-    )
-
-    return LLMChain(
-        llm=client,
-        prompt=prompt
-    )
-
-
-def call_qwen_single(domain: str, image_path: str):
-    """
-    对单张图片调用 Qwen，避免超长输入。
-    """
-    from openai import OpenAI
+def call_qwen(prompt_dict):
+    # 1.加载提示词模板
+    with open("main_prompt.txt", "r", encoding="utf-8") as f:
+        domain_prompt = f.read()
     client = OpenAI(api_key=ALI_API_KEY, base_url=ALI_BASE_URL)
 
+    user_input = safe_truncate_json(prompt_dict, max_length=28000)  # 留 2k 给其他内容
+    # user_input = json.dumps(prompt_dict, ensure_ascii=False)
+    # limit_input = user_input[:30000]
     resp = client.chat.completions.create(
-        model="qwen-max",
+        model="qwen-vl-plus",
         messages=[
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text",
-                     "text": "You are an expert in image-domain feature extraction and knowledge graph evolution."}
-                ]
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": f"Domain: {domain}"},
-                    {"type": "input_image", "image_url": f"file://{image_path}"}
-                ]
-            }
+            {"role": "system", "content": domain_prompt},
+            {"role": "user", "content": user_input}
         ]
     )
 
-    # Qwen 输出结构安全解析
-    return resp.choices[0].message.content[0].text
-
-
-def extract_structured_info(domain: str, image_path: str):
-    """
-    调用单图 LLM ➜ 解析成结构化信息
-    """
-    raw = call_qwen_single(domain, image_path)
-
+    raw = resp.choices[0].message.content
+    print("RAW LLM OUTPUT:", repr(raw))
     try:
-        return json.loads(raw)
+        return extract_json(raw)
     except:
-        s = raw[raw.find("{") : raw.rfind("}")+1]
-        return json.loads(s)
-
-
-def merge_schemas(existing_schema, image_infos):
-    new_schema = existing_schema.copy()
-
-    for item in image_infos:
-        if "error" in item:
-            continue
-        info = item["result"]
-
-        # 假设每个 info 里有：nodes, relations
-        for n in info.get("nodes", []):
-            if n not in new_schema["nodes"]:
-                new_schema["nodes"].append(n)
-
-        for r in info.get("relations", []):
-            if r not in new_schema["relations"]:
-                new_schema["relations"].append(r)
-
-    return new_schema
-
-
-def call_qwen_schema_generator(domain, merged_schema):
-    from openai import OpenAI
-    client = OpenAI(api_key=ALI_API_KEY, base_url=ALI_BASE_URL)
-
-    payload = {
-        "domain": domain,
-        "merged_schema": merged_schema
-    }
-
-    resp = client.chat.completions.create(
-        model="qwen-max",
-        messages=[
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text", "text": "Generate knowledge graph schema and Cypher based on merged schema."}
-                ]
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": json.dumps(payload, ensure_ascii=False)}
-                ]
-            }
-        ]
-    )
-
-    text = resp.choices[0].message["content"][0]["text"]
-    try:
-        return json.loads(text)
-    except:
-        s = text[text.find("{") : text.rfind("}")+1]
+        s = raw[raw.find("{"):raw.rfind("}") + 1]
         return json.loads(s)
 
 def safe_payload(prompt, existing_schema, image_infos):
@@ -141,26 +55,137 @@ def safe_payload(prompt, existing_schema, image_infos):
         "images": image_infos
     }
 
-def call_qwen(prompt_dict):
-    from openai import OpenAI
-    client = OpenAI(api_key=ALI_API_KEY, base_url=ALI_BASE_URL)
+'''语义匹配'''
+def match_domain(prompt: str, specific_domains: list, sub_domains: list, threshold=0.75) -> str:
+    # 先在 specific_domain 中匹配
+    match_specific = semantic_match(prompt, specific_domains, threshold)
+    if match_specific != prompt:  # 匹配成功
+        return match_specific
 
-    user_input = json.dumps(prompt_dict, ensure_ascii=False)
+    # 再在 sub_domain 中匹配
+    match_sub = semantic_match(prompt, sub_domains, threshold)
+    if match_sub != prompt:
+        return match_sub
 
-    resp = client.chat.completions.create(
-        model="qwen-max",
-        messages=[
-            {"role": "system",
-             "content": [{"type": "text",
-                          "text": "You are an expert in image-domain feature extraction and knowledge graph evolution."}]},
-            {"role": "user", "content": [{"type": "text", "text": user_input[:30000]}]},
-        ]
-    )
+    # 都没匹配上
+    return prompt
 
-    raw = resp.choices[0].message.content
 
-    try:
-        return json.loads(raw)
-    except:
-        s = raw[raw.find("{"):raw.rfind("}") + 1]
-        return json.loads(s)
+from sentence_transformers import SentenceTransformer, util
+import torch
+
+# 模型路径（建议使用 os.path 保证跨平台）
+MODEL_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "models",
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+MODEL_PATH = r"E:\Data\study_code\py_code\Graph_FakeDetector\paraphrase-multilingual-MiniLM-L12-v2"
+
+# 全局变量 + 线程锁
+_model = None
+_model_lock = threading.Lock()
+
+
+def get_model() -> SentenceTransformer:
+    """
+    线程安全的单例模型加载器。
+    首次调用时从本地路径加载模型，之后返回缓存实例。
+    """
+    global _model
+    if _model is None:
+        with _model_lock:  # 防止多线程同时加载
+            if _model is None:  # double-check
+                if not os.path.exists(MODEL_PATH):
+                    raise FileNotFoundError(
+                        f"本地 SentenceTransformer 模型未找到: {MODEL_PATH}\n"
+                        "请从 https://hf-mirror.com/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 下载模型文件"
+                    )
+                _model = SentenceTransformer(MODEL_PATH, device="cpu")
+    return _model
+
+
+def semantic_match(prompt: str, candidates: list, threshold: float = 0.65) -> str:
+    """
+    对 prompt 在 candidates 中做语义匹配，返回最相似项（若相似度 > threshold），否则返回 prompt 本身。
+    """
+    if not candidates:
+        return prompt
+
+    model = get_model()
+
+    # 编码
+    prompt_emb = model.encode(prompt, convert_to_tensor=True)
+    candidates_emb = model.encode(candidates, convert_to_tensor=True)
+
+    # 计算余弦相似度
+    similarities = util.cos_sim(prompt_emb, candidates_emb)[0]
+
+    # 找最大相似度及其索引
+    max_sim_score, max_idx = torch.max(similarities, dim=0)
+    max_sim_score = max_sim_score.item()
+
+    if max_sim_score >= threshold:
+        return candidates[max_idx.item()]
+    else:
+        return prompt
+
+def safe_truncate_json(obj, max_length=30000):
+    """
+    安全地将 obj 转为 JSON 字符串，总长度不超过 max_length。
+    优先保留结构完整性，按字段重要性裁剪。
+    """
+    # 初始尝试
+    full_json = json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+    if len(full_json) <= max_length:
+        return full_json
+
+    # 1. 优先确保顶层结构完整：保留所有 key，但裁剪值
+    truncated_obj = {}
+
+    # 按重要性顺序处理字段（越靠前越不能丢）
+    for key in ["prompt", "domain_name", "images", "existing_schema"]:
+        if key not in obj:
+            continue
+
+        if key == "prompt":
+            # 裁剪 prompt
+            truncated_obj[key] = str(obj[key])[:1000]
+
+        elif key == "domain_name":
+            # domain_name 不能裁剪！必须完整
+            truncated_obj[key] = obj[key]
+
+        elif key == "images":
+            # images 是列表，只保留前 N 张，且移除 base64（关键！）
+            safe_images = []
+            for img in obj[key][:3]:  # 最多3张
+                safe_img = {k: v for k, v in img.items() if k != "base64"}
+                safe_images.append(safe_img)
+            truncated_obj[key] = safe_images
+
+        elif key == "existing_schema":
+            # 只保留 domain + top-K features（按 fake_score 排序）
+            schema = obj[key]
+            safe_schema = {"domain": schema.get("domain", "")}
+            features = schema.get("features", [])
+            if isinstance(features, list):
+                # 按 fake_score 降序
+                sorted_feats = sorted(
+                    [f for f in features if isinstance(f, dict)],
+                    key=lambda x: float(x.get("fake_score", 0)),
+                    reverse=True
+                )
+                safe_schema["features"] = sorted_feats[:8]  # 最多8个特征
+            truncated_obj[key] = safe_schema
+
+    # 再次序列化
+    result = json.dumps(truncated_obj, ensure_ascii=False, separators=(',', ':'))
+    if len(result) > max_length:
+        # 极端情况：再裁剪 prompt
+        over = len(result) - max_length
+        truncated_obj["prompt"] = truncated_obj["prompt"][:-over - 10]  # 多留点余量
+        result = json.dumps(truncated_obj, ensure_ascii=False, separators=(',', ':'))
+
+    return result
