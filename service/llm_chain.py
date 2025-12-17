@@ -189,3 +189,22 @@ def safe_truncate_json(obj, max_length=30000):
         result = json.dumps(truncated_obj, ensure_ascii=False, separators=(',', ':'))
 
     return result
+
+
+def reasoning(evidence: list, decision: dict) -> dict:
+    explanations = []
+    chains = []
+
+    for e in evidence:
+        explanations.append(
+            f"检测到 {e['domain']} 中的「{e['subdomain']}」，置信度为 {e['score']}。"
+        )
+        chains.append(
+            f"{e['subdomain']} → {e['domain']} → {e['main_domain']}"
+        )
+
+    return {
+        "decision": decision["label"],
+        "explanations": explanations,
+        "evidence_chain": chains
+    }

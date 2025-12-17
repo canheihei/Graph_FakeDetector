@@ -9,9 +9,10 @@ from werkzeug.utils import secure_filename
 
 from service.common_utils import safe_path_name, get_image_base64_list, \
     build_detection_response
-from service.llm_chain import safe_payload, call_qwen, match_domain
+from service.detect_client import extract_features, map_features, build_evidence, decide
+from service.llm_chain import safe_payload, call_qwen, match_domain, reasoning
 from service.neo_client import get_existing_schema, apply_cyphers, get_specificdomain, get_subdomain, \
-    create_features_and_relations, process_result
+    create_features_and_relations, process_result, neo4j_client
 
 app = Flask(__name__)
 
@@ -92,6 +93,87 @@ def iterate():
         "features": result.get("features", []),
         "cypher_executed": result_cyper
     })
+
+@app.route("/api/aigc/detect", methods=["POST"])
+def detect():
+    try:
+        if "image" not in request.files:
+            return jsonify({"error": "No image uploaded"}), 400
+
+        image_bytes = request.files["image"].read()
+
+        features = extract_features(image_bytes)
+        activated = map_features(features)
+
+        # 防御：没有激活子域
+        if not activated:
+            return jsonify({
+                "label": "REAL",
+                "confidence": 0.1,
+                "evidence": [],
+                "reasoning": {
+                    "explanations": ["未检测到显著异常特征"],
+                    "evidence_chain": []
+                }
+            })
+
+        evidence = build_evidence(activated)
+        decision = decide(evidence)
+        llm_result = reasoning(evidence, decision)
+
+        return jsonify({
+            "label": decision["label"],
+            "confidence": decision["confidence"],
+            "evidence": evidence,
+            "reasoning": llm_result
+        })
+
+    except Exception as e:
+        print("🔥 ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/graph/stats", methods=["GET"])
+def graph_stats():
+    try:
+        stats = {}
+
+        # 1. 节点类型统计
+        stats["node_counts"] = neo4j_client.query("""
+        MATCH (n)
+        RETURN labels(n)[0] AS label, count(n) AS count
+        """)
+
+        # 2. 关系类型统计
+        stats["relation_counts"] = neo4j_client.query("""
+        MATCH ()-[r]->()
+        RETURN type(r) AS type, count(r) AS count
+        """)
+
+        # 3. 各 SpecificDomain 下 SubDomain 数量
+        stats["domain_structure"] = neo4j_client.query("""
+        MATCH (s:SubDomain)-[:SPECIFIC_OF]->(d:SpecificDomain)
+        RETURN d.name AS domain, count(s) AS sub_count
+        """)
+
+        # 4. 子域 Top（可作为“最常见异常类型”）
+        stats["subdomain_list"] = neo4j_client.query("""
+        MATCH (s:SubDomain)
+        RETURN s.name AS name, s.id AS id
+        ORDER BY s.id
+        """)
+
+        # 5. 图谱整体规模
+        stats["graph_overview"] = neo4j_client.query("""
+        MATCH (n)
+        WITH count(n) AS nodes
+        MATCH ()-[r]->()
+        RETURN nodes, count(r) AS relations
+        """)[0]
+
+        return jsonify(stats)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/test", methods=["POST"])
 def test():

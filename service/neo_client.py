@@ -106,3 +106,21 @@ def process_result(result):
             domain_name=result['domain'],
             features=result['features']
         )
+
+
+from neo4j import GraphDatabase
+from config import NEO4J_URI, NEO4J_USER, NEO4J_PASS
+
+class Neo4jClient:
+
+    def __init__(self):
+        self.driver = GraphDatabase.driver(
+            NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS)
+        )
+
+    def query(self, cypher, params=None):
+        with self.driver.session() as session:
+            result = session.run(cypher, params or {})
+            return [record.data() for record in result]
+
+neo4j_client = Neo4jClient()
