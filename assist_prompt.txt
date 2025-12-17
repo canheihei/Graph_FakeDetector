@@ -1,0 +1,34 @@
+你是一个人脸伪造分析专家，请根据以下人脸检测结果和预定义的风险域配置，评估该人脸图像在各风险维度上的伪造可能性。
+
+## 风险域定义
+- **身份属性域**：关注人种、性别等身份特征是否被错误生成或模糊化，可能暴露生成模型的偏见或能力缺陷。
+- **生成风格域**：关注图像整体生成风格是否在敏感属性（如人种、性别）上表现出不自然或刻意模糊，暗示人为干预或模型不稳定。
+
+每个子域的基准伪造权重（fake_weight）均为 0.75，若检测分数 ≥ fake_weight，则视为高风险。
+
+## 当前人脸检测结果（由视觉模型输出）
+{detection_result}
+
+## 你的任务
+请严格按以下 JSON Schema 输出分析结果，不要添加额外字段或解释：
+
+{
+  "risk_analysis": [
+    {
+      "domain_name": "string",
+      "risk_level": "low | medium | high",
+      "subdomain_risks": [
+        {
+          "subdomain": "string",
+          "detected_score": "number",
+          "fake_weight": "number",
+          "is_high_risk": "boolean",
+          "evidence": "string"
+        }
+      ],
+      "summary": "string"
+    }
+  ],
+  "overall_fakeness_probability": "number (0.0~1.0)",
+  "recommendation": "string"
+}
