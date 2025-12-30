@@ -2,8 +2,6 @@ import asyncio
 import os
 
 from flask import Flask, request, jsonify, render_template
-from PIL import Image
-import io
 
 from werkzeug.utils import secure_filename
 
@@ -85,14 +83,39 @@ def iterate():
     # 6.执行进化
     result_cyper = process_result(result)
 
-    # cy_list = result.get("cypher", [])
-    # apply_cyphers(cy_list)
-
     return jsonify({
         "message": f"处理完成，共 {len(image_infos)} 张图",
         "features": result.get("features", []),
         "cypher_executed": result_cyper
     })
+
+@app.route('/iterate_directly', methods=['POST'])
+def ingest_feature_domain():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        # 验证必要字段
+        required_keys = {'specific_domain', 'describe', 'specific_id', 'subdomain'}
+        if not required_keys.issubset(data.keys()):
+            return jsonify({"error": f"Missing required fields: {required_keys - data.keys()}"}), 400
+
+        if not isinstance(data['subdomain'], list):
+            return jsonify({"error": "subdomain must be a list"}), 400
+
+        for sub in data['subdomain']:
+            if not all(k in sub for k in ['name', 'describe', 'sub_id']):
+                return jsonify({"error": "Each subdomain item must contain 'name', 'describe', 'sub_id'"}), 400
+
+        # 写入 Neo4j
+        process_result(data)
+
+        return jsonify({"status": "success", "message": "Feature domain and subdomains ingested into Neo4j"}), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in /ingest-feature-domain: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/aigc/detect", methods=["POST"])
 def detect():

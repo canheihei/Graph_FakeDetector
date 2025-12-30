@@ -62,35 +62,45 @@ def get_subdomain():
     except Exception as e:
         return {"error": str(e), "data": []}
 
-def create_features_and_relations(tx, domain_name: str, features: list):
+def create_features_and_relations(tx, specific_domain: str, describe: str, specific_id: str, subdomain: list):
     """
     在事务中：
     1. 确保 SpecificDomain 节点存在（不存在则创建）
-    2. 为每个 feature 创建 SubDomain 节点
+    2. 为每个子特征创建 SubDomain 节点
     3. 建立 (:SubDomain)-[:SPECIFIC_OF]->(:SpecificDomain) 关系
     """
-    # 1. 确保 Domain 节点存在（自动创建）
+    # 1. 确保 SpecificDomain 节点存在（基于 name 唯一标识）
     tx.run(
-        "MERGE (d:SpecificDomain {name: $domain_name})",
-        domain_name=domain_name
+        """
+        MERGE (d:SpecificDomain {name: $specific_domain})
+        ON CREATE SET 
+            d.specific_id = $specific_id,
+            d.describe = $describe
+        ON MATCH SET
+            d.specific_id = $specific_id,
+            d.describe = $describe
+        """,
+        specific_domain=specific_domain,
+        describe=describe,
+        specific_id=specific_id
     )
 
-    # 2. 为每个 feature 创建节点并建立关系
-    for feat in features:
+    # 2. 为每个子特征创建 SubDomain 节点，并关联到 SpecificDomain
+    for sub in subdomain:
         tx.run(
             """
-            MATCH (d:SpecificDomain {name: $domain_name})
+            MATCH (d:SpecificDomain {name: $specific_domain})
             MERGE (f:SubDomain {
                 name: $name,
                 describe: $describe,
-                fake_score: $fake_score
+                sub_id: $sub_id
             })
             MERGE (f)-[:SPECIFIC_OF]->(d)
             """,
-            domain_name=domain_name,
-            name=feat["name"],
-            describe=feat["describe"],
-            fake_score=feat["fake_score"]
+            specific_domain=specific_domain,
+            name=sub["name"],
+            describe=sub["describe"],
+            sub_id=sub["sub_id"]
         )
 
 def apply_cyphers(cy_list):
@@ -103,8 +113,10 @@ def process_result(result):
     with driver.session() as session:
         session.execute_write(
             create_features_and_relations,
-            domain_name=result['domain'],
-            features=result['features']
+            specific_domain=result['specific_domain'],
+            describe=result['describe'],
+            specific_id=result['specific_id'],
+            subdomain=result['subdomain']
         )
 
 
