@@ -1,112 +1,250 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="h-full bg-gray-100">
 <head>
-  <meta charset="UTF-8" />
-  <title>图谱数据可视化</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>图谱指标监控 - GraphXFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in-up { opacity: 0; transform: translateY(15px); transition: opacity 0.4s ease-out, transform 0.4s ease-out; }
+        .fade-in-up.show { opacity: 1; transform: translateY(0); }
+
+        /* 扫描线动画 */
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6366f1, transparent);
+            position: absolute;
+            top: 0;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* 骨架屏动画 */
+        .skeleton {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
 </head>
 
-<body class="bg-gray-50 p-6">
-  <div class="max-w-4xl mx-auto">
-    <h2 class="text-xl font-bold mb-4">知识图谱统计可视化</h2>
+<body class="bg-gray-100 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto space-y-8">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      <!-- 节点类型分布 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">节点类型分布</h3>
-        <ul id="nodeStats" class="space-y-1 text-sm text-gray-700">
-          <li class="text-gray-400">加载中...</li>
-        </ul>
-      </div>
-
-      <!-- 关系类型分布 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">关系类型分布</h3>
-        <ul id="relationStats" class="space-y-1 text-sm text-gray-700">
-          <li class="text-gray-400">加载中...</li>
-        </ul>
-      </div>
-
-      <!-- 域结构 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">域 → 子域结构</h3>
-        <ul id="domainStats" class="space-y-1 text-sm text-gray-700">
-          <li class="text-gray-400">加载中...</li>
-        </ul>
-      </div>
-
-      <!-- 图谱整体规模 -->
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold mb-2">图谱整体规模</h3>
-        <ul id="graphOverview" class="space-y-1 text-sm text-gray-700">
-          <li class="text-gray-400">加载中...</li>
-        </ul>
-      </div>
-
-      <!-- 子域列表 -->
-      <div class="bg-white p-4 rounded shadow md:col-span-2">
-        <h3 class="font-semibold mb-2">已建子域列表</h3>
-        <div id="subdomainList" class="flex flex-wrap gap-2 text-sm">
-          <span class="text-gray-400">加载中...</span>
+        <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-gray-200 pb-6 fade-in-up">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                    图谱进化指标 <span class="text-indigo-600 italic">Dashboard</span>
+                </h1>
+                <p class="mt-2 text-gray-500 font-medium">实时监控知识图谱节点分布、关系拓扑及多维域结构。</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex space-x-3 text-sm font-mono">
+                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full border border-green-200 flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                    Database Connected
+                </span>
+                <span id="lastUpdated" class="px-3 py-1 bg-gray-200 text-gray-600 rounded-full border border-gray-300">
+                    Last Update: Just now
+                </span>
+            </div>
         </div>
-      </div>
 
+        <div id="overviewGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 fade-in-up delay-100">
+            <div class="bg-indigo-600 rounded-xl p-5 text-white shadow-lg shadow-indigo-200 relative overflow-hidden">
+                <div class="scan-line"></div>
+                <p class="text-indigo-100 text-sm font-medium">节点总数</p>
+                <h3 id="totalNodes" class="text-3xl font-bold mt-1 font-mono">----</h3>
+                <div class="mt-4 text-xs text-indigo-200 flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"/></svg>
+                    实时数据库动态同步
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+                <p class="text-gray-500 text-sm font-medium">关系总数</p>
+                <h3 id="totalRelations" class="text-3xl font-bold mt-1 font-mono text-gray-900">----</h3>
+                <div class="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 rounded-full" style="width: 75%"></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+                <p class="text-gray-500 text-sm font-medium">已激活域</p>
+                <h3 id="totalDomains" class="text-3xl font-bold mt-1 font-mono text-gray-900">----</h3>
+                <div class="mt-4 text-xs text-green-600 font-bold uppercase tracking-wider">Multi-Domain Active</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+                <p class="text-gray-500 text-sm font-medium">子域规模</p>
+                <h3 id="totalSubdomains" class="text-3xl font-bold mt-1 font-mono text-gray-900">----</h3>
+                <div class="mt-4 text-xs text-gray-400">持续迭代进化中...</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 fade-in-up delay-200">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        节点类型分布
+                    </h3>
+                </div>
+                <div id="nodeStats" class="space-y-4">
+                    <div class="h-4 w-full skeleton rounded"></div>
+                    <div class="h-4 w-3/4 skeleton rounded"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 fade-in-up delay-300">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        拓扑关系分析
+                    </h3>
+                </div>
+                <div id="relationStats" class="space-y-4">
+                    <div class="h-4 w-full skeleton rounded"></div>
+                    <div class="h-4 w-3/4 skeleton rounded"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 fade-in-up delay-400">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        域 → 子域映射
+                    </h3>
+                </div>
+                <div id="domainStats" class="space-y-4 text-sm">
+                    <div class="h-4 w-full skeleton rounded"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-3 fade-in-up delay-500">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        全局已激活子域列表 (Evolution Tags)
+                    </h3>
+                </div>
+                <div id="subdomainList" class="flex flex-wrap gap-3">
+                    <div class="h-8 w-24 skeleton rounded"></div>
+                    <div class="h-8 w-24 skeleton rounded"></div>
+                    <div class="h-8 w-24 skeleton rounded"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="flex justify-center fade-in-up delay-600">
+            <a href="index.html" class="inline-flex items-center px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-all shadow-sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                返回控制台首页
+            </a>
+        </div>
     </div>
 
-    <a href="index.html" class="mt-6 inline-block text-gray-600 hover:underline">← 返回</a>
-  </div>
-
 <script>
+
 async function loadGraphStats() {
   try {
     const res = await fetch("/api/graph/stats");
     const data = await res.json();
 
-    // 节点统计
+    // 1. 顶部核心指标更新
+    document.getElementById("totalNodes").innerText = data.graph_overview.nodes.toLocaleString();
+    document.getElementById("totalRelations").innerText = data.graph_overview.relations.toLocaleString();
+    document.getElementById("totalDomains").innerText = data.domain_structure.length;
+    document.getElementById("totalSubdomains").innerText = data.subdomain_list.length;
+
+    // 2. 节点统计 - 增加进度条视觉效果
     const nodeStats = document.getElementById("nodeStats");
     nodeStats.innerHTML = "";
+    const maxNodes = Math.max(...data.node_counts.map(n => n.count));
     data.node_counts.forEach(n => {
-      nodeStats.innerHTML += `<li>• ${n.label}: <strong>${n.count}</strong></li>`;
+      const percentage = (n.count / maxNodes) * 100;
+      nodeStats.innerHTML += `
+        <div class="space-y-1">
+          <div class="flex justify-between text-sm">
+            <span class="font-medium text-gray-700">${n.label}</span>
+            <span class="font-mono text-indigo-600">${n.count}</span>
+          </div>
+          <div class="h-2 w-full bg-gray-100 rounded-full">
+            <div class="h-full bg-indigo-500 rounded-full transition-all duration-1000" style="width: ${percentage}%"></div>
+          </div>
+        </div>`;
     });
 
-    // 关系统计
+    // 3. 关系统计 - 增加徽章样式
     const relationStats = document.getElementById("relationStats");
     relationStats.innerHTML = "";
     data.relation_counts.forEach(r => {
-      relationStats.innerHTML += `<li>• ${r.type}: <strong>${r.count}</strong></li>`;
+      relationStats.innerHTML += `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+          <span class="text-sm font-semibold text-gray-600 font-mono tracking-tighter">${r.type}</span>
+          <span class="px-2 py-1 bg-white border border-gray-200 rounded text-xs font-bold text-gray-800 shadow-sm">${r.count}</span>
+        </div>`;
     });
 
-    // 域结构
+    // 4. 域结构
     const domainStats = document.getElementById("domainStats");
     domainStats.innerHTML = "";
     data.domain_structure.forEach(d => {
-      domainStats.innerHTML += `<li>• ${d.domain}: ${d.sub_count} 个子域</li>`;
+      domainStats.innerHTML += `
+        <div class="flex items-center space-x-3">
+          <div class="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-400"></div>
+          <div class="flex-grow text-gray-700">${d.domain}</div>
+          <div class="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-xs">${d.sub_count} Subdomains</div>
+        </div>`;
     });
 
-    // 图谱规模
-    const graphOverview = document.getElementById("graphOverview");
-    graphOverview.innerHTML = `
-      <li>节点总数：<strong>${data.graph_overview.nodes}</strong></li>
-      <li>关系总数：<strong>${data.graph_overview.relations}</strong></li>
-    `;
-
-    // 子域列表
+    // 5. 子域列表 - 增强 Tags 样式
     const subdomainList = document.getElementById("subdomainList");
     subdomainList.innerHTML = "";
     data.subdomain_list.forEach(s => {
       subdomainList.innerHTML += `
-        <span class="px-2 py-1 bg-blue-50 border border-blue-200 rounded">
-          ${s.name}
+        <span class="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-md text-xs font-semibold hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-default shadow-sm">
+          # ${s.name}
         </span>`;
     });
 
+    // 入场动画
+    document.querySelectorAll('.fade-in-up').forEach(el => el.classList.add('show'));
+
   } catch (e) {
-    console.error(e);
+    console.error("Fetch Error:", e);
+    document.querySelectorAll('.skeleton').forEach(el => el.innerText = "Data fetch failed.");
   }
 }
 
-loadGraphStats();
+document.addEventListener('DOMContentLoaded', () => {
+    loadGraphStats();
+    // 模拟更新时间
+    document.getElementById('lastUpdated').innerText = `Last Update: ${new Date().toLocaleTimeString()}`;
+});
 </script>
 
 </body>

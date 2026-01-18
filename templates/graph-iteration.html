@@ -1,64 +1,427 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN" class="h-full bg-gray-100">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>图谱迭代</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>深度图谱迭代平台 - GraphXFlow</title>
+    <link href="../static/tailwind.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 自定义 CSS 变量和基础样式 - 确保 Tailwind 覆盖 */
+        :root {
+            --primary-color: #4f46e5; /* Indigo 600 */
+            --primary-hover-color: #4338ca; /* Indigo 700 */
+            --primary-light-color: #e0e7ff; /* Indigo 100 */
+            --text-color: #374151; /* Gray 700 */
+            --bg-color: #f9fafb; /* Gray 50 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+        }
+
+        /* 更流畅的淡入动画 */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(15px);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+
+        .fade-in-up.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 输入框焦点动画 */
+        .input-focus-effect:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4); /* Indigo 500 with alpha */
+            border-color: var(--primary-color);
+        }
+
+        /* 旋转动画 */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin-custom {
+            animation: spin 1s linear infinite;
+        }
+
+        /* 按钮点击反馈 */
+        .btn-press:active {
+            transform: scale(0.98);
+        }
+
+        /* 伪进度条动画 */
+        @keyframes progress-pulsate {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .progress-bar-animated {
+            background: linear-gradient(to right, #e0e7ff 0%, #a5b4fc 50%, #e0e7ff 100%);
+            background-size: 200% 100%;
+            animation: progress-pulsate 1.5s linear infinite;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 p-6">
-<div class="max-w-2xl mx-auto">
-    <h2 class="text-xl font-bold mb-4">图谱迭代配置</h2>
-
-    <div class="mb-6">
-        <label class="block text-gray-700 mb-2" for="prompt">Prompt 输入</label>
-        <textarea id="prompt"
-                  placeholder="请输入用于图谱迭代的 Prompt..."
-                  class="w-full h-32 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+<body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
+<div class="max-w-4xl w-full space-y-8 fade-in-up">
+    <div class="text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl lg:text-6xl">
+            GraphXFlow <span class="text-indigo-600">迭代平台</span>
+        </h1>
+        <p class="mt-3 text-xl text-gray-500 max-w-2xl mx-auto">
+            通过智能 Prompt 和丰富的图像数据，驱动深度图谱的进化与精细化。
+        </p>
+        <div class="mt-6 flex justify-center space-x-4">
+            <a href="#configuration"
+               class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors btn-press">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                     fill="currentColor">
+                    <path fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z"
+                          clip-rule="evenodd"/>
+                </svg>
+                开始新迭代
+            </a>
+            <a href="index.html"
+               class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors btn-press">
+                <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                     fill="currentColor">
+                    <path fill-rule="evenodd"
+                          d="M10.79 2.529a1.5 1.5 0 00-1.58 0L.38 8.97a.75.75 0 000 1.06l8.83 6.441a1.5 1.5 0 001.58 0l8.83-6.44a.75.75 0 000-1.06l-8.83-6.441zM11 9.421V15a.75.75 0 01-.75.75h-1.5A.75.75 0 018 15V9.421l-3.235-2.36L10 3.864l5.235 3.197L11 9.421z"
+                          clip-rule="evenodd"/>
+                </svg>
+                返回主页
+            </a>
+        </div>
     </div>
 
-    <div class="mb-6">
-        <label class="block text-gray-700 mb-2">上传图片文件夹（支持多选）</label>
-        <input type="file"
-               id="folderUpload"
-               webkitdirectory directory multiple
-               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+    <section id="configuration"
+             class="bg-white shadow-lg rounded-xl p-8 transition-all duration-300 hover:shadow-2xl hover:scale-[1.005] fade-in-up delay-100">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">
+            <span class="text-indigo-600">▍</span>核心迭代配置
+        </h2>
+
+        <div class="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200 transition-all duration-300 fade-in-up delay-200">
+            <label class="block text-lg font-medium text-indigo-800 mb-3" for="prompt">
+                <svg class="inline-block w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+                Prompt 指令输入
+            </label>
+            <textarea id="prompt"
+                      rows="6"
+                      placeholder="请输入用于引导图谱迭代的详细 Prompt (例如：'提升人物关系的准确性，识别潜在的虚假信息源，并可视化关键冲突点')..."
+                      class="w-full p-4 border border-indigo-300 rounded-lg bg-white shadow-sm focus:outline-none input-focus-effect text-gray-800 transition-all duration-200"></textarea>
+            <p class="mt-2 text-sm text-indigo-600">支持多行输入，建议提供清晰明确的迭代指令。</p>
+        </div>
+
+        <div class="mb-8 p-6 bg-white rounded-lg border border-gray-200 shadow-md fade-in-up delay-300">
+            <label class="block text-lg font-medium text-gray-800 mb-3">
+                <svg class="inline-block w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                </svg>
+                上传图像数据集 (文件夹)
+            </label>
+            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors duration-200">
+                <div class="space-y-1 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"
+                         aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-4V24m-4 4v4H12m4 0h8m-8-4h.01M16 12h.01M24 12h.01M28 12h.01M16 16h.01M24 16h.01M28 16h.01M16 20h.01M24 20h.01M28 20h.01"
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="flex text-sm text-gray-600">
+                        <label for="folderUpload"
+                               class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                            <span>选择一个图像文件夹</span>
+                            <input id="folderUpload" webkitdirectory directory multiple type="file" class="sr-only">
+                        </label>
+                        <p class="pl-1">或拖拽到此处</p>
+                    </div>
+                    <p class="text-xs text-gray-500">
+                        支持 JPG, PNG, GIF, BMP 等多种格式，数量不限。
+                    </p>
+                </div>
+            </div>
+            <p id="fileCountHint" class="mt-3 text-sm text-indigo-700 font-medium hidden">
+                <span id="fileCountNum" class="text-indigo-900 font-bold">0</span> 个文件已选择，准备就绪。
+            </p>
+        </div>
+
+        <div class="mb-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm fade-in-up delay-400">
+            <button id="toggleAdvancedSettings"
+                    class="flex items-center justify-between w-full text-lg font-medium text-gray-800 focus:outline-none">
+                    <span class="flex items-center">
+                        <svg class="inline-block w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round"
+                                                                                          stroke-linejoin="round"
+                                                                                          stroke-width="2"
+                                                                                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path
+                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        高级迭代参数 <span class="text-sm ml-2 text-gray-500">(可选)</span>
+                    </span>
+                <svg id="arrowIcon" class="w-5 h-5 text-gray-500 transform transition-transform duration-300 rotate-0"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="advancedSettingsContent"
+                 class="mt-4 border-t border-gray-200 pt-4 hidden transition-all duration-300 ease-in-out max-h-0 overflow-hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="iterationSteps"
+                               class="block text-sm font-medium text-gray-700 mb-2">迭代步数</label>
+                        <input type="number" id="iterationSteps" value="5" min="1" max="100"
+                               class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 focus:outline-none input-focus-effect transition-all duration-200">
+                        <p class="mt-1 text-xs text-gray-500">每次迭代的计算深度，影响精细度。</p>
+                    </div>
+                    <div>
+                        <label for="modelVersion" class="block text-sm font-medium text-gray-700 mb-2">模型版本</label>
+                        <select id="modelVersion"
+                                class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 focus:outline-none input-focus-effect transition-all duration-200">
+                            <option value="v1.0-stable">GraphX-V1.0 (稳定)</option>
+                            <option value="v1.1-beta">GraphX-V1.1 (测试版)</option>
+                            <option value="custom-dev">自定义开发版</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">选择用于图谱分析和迭代的核心模型。</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="outputFormat" class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" name="outputFormat" value="json"
+                                       class="form-radio text-indigo-600 focus:ring-indigo-500" checked>
+                                <span class="ml-2 text-gray-700">JSON</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="outputFormat" value="csv"
+                                       class="form-radio text-indigo-600 focus:ring-indigo-500">
+                                <span class="ml-2 text-gray-700">CSV</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="outputFormat" value="graphml"
+                                       class="form-radio text-indigo-600 focus:ring-indigo-500">
+                                <span class="ml-2 text-gray-700">GraphML</span>
+                            </label>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">选择最终图谱输出的数据格式。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between mt-10 space-y-4 sm:space-y-0 fade-in-up delay-500">
+            <button id="submitBtn" onclick="submitIteration()"
+                    class="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white font-semibold text-lg rounded-xl shadow-lg hover:bg-indigo-700 transition-all duration-300 btn-press transform hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                <svg class="inline-block -ml-1 mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                立即启动迭代
+            </button>
+
+            <div id="loading"
+                 class="fade-in-up hidden mt-4 flex-col items-center text-indigo-700 w-full sm:w-auto p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div class="flex items-center mb-2">
+                    <svg class="animate-spin-custom -ml-1 mr-3 h-6 w-6 text-indigo-600"
+                         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="font-semibold text-lg">处理中... <span id="processingCount">0</span> 张图像</span>
+                </div>
+                <div class="w-full h-2 bg-indigo-200 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-indigo-600 rounded-full progress-bar-animated"
+                         style="width: 0%;"></div>
+                </div>
+                <p class="mt-2 text-sm text-indigo-600">请稍候，系统正在对图谱进行深度分析与迭代。</p>
+            </div>
+
+            <div id="result"
+                 class="fade-in-up hidden mt-4 p-4 bg-green-100 border border-green-300 rounded-lg text-green-800 font-medium w-full sm:w-auto flex items-center justify-center">
+                <svg class="w-6 h-6 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>任务完成！ <span id="resultMsg"></span></span>
+            </div>
+        </div>
+    </section>
+
+    <div class="text-center mt-12 text-gray-500 text-sm fade-in-up delay-600">
+        &copy; 2026 GraphXFlow. All rights reserved. | <a href="#" class="text-indigo-600 hover:underline">隐私政策</a>
     </div>
-
-    <button onclick="submitIteration()" class="py-2 px-6 bg-blue-600 text-white rounded hover:bg-blue-700">
-        提交
-    </button>
-
-    <a href="index.html" class="ml-4 text-gray-600 hover:underline">← 返回</a>
 </div>
-</body>
-</html>
 
 <script>
-  async function submitIteration() {
-    const prompt = document.getElementById("prompt").value;
-    const files = document.getElementById("folderUpload").files;
-    if (!prompt || files.length === 0) {
-      alert("请填写 Prompt 并选择图片文件夹");
-      return;
-    }
+    let isSubmitting = false;
 
-    const formData = new FormData();
-    formData.append("prompt", prompt);
-    for (let i = 0; i < files.length; i++) {
-      formData.append("images", files[i]);
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+        // 页面加载完成后显示主体内容
+        document.querySelector('.fade-in-up').classList.add('show');
+        document.querySelectorAll('.fade-in-up.delay-100').forEach(el => setTimeout(() => el.classList.add('show'), 100));
+        document.querySelectorAll('.fade-in-up.delay-200').forEach(el => setTimeout(() => el.classList.add('show'), 200));
+        document.querySelectorAll('.fade-in-up.delay-300').forEach(el => setTimeout(() => el.classList.add('show'), 300));
+        document.querySelectorAll('.fade-in-up.delay-400').forEach(el => setTimeout(() => el.classList.add('show'), 400));
+        document.querySelectorAll('.fade-in-up.delay-500').forEach(el => setTimeout(() => el.classList.add('show'), 500));
+        document.querySelectorAll('.fade-in-up.delay-600').forEach(el => setTimeout(() => el.classList.add('show'), 600));
+    });
 
-    try {
-      const resp = await fetch("/iterate", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await resp.json();
-      alert("任务完成！" + (result.message || ""));
-    } catch (err) {
-      console.error(err);
-      alert("提交失败：" + err.message);
+
+    // 文件选择变化事件
+    document.getElementById("folderUpload").addEventListener("change", function () {
+        const count = this.files.length;
+        const hint = document.getElementById("fileCountHint");
+        const num = document.getElementById("fileCountNum");
+        if (count > 0) {
+            num.textContent = count;
+            hint.classList.remove("hidden");
+            // 为提示信息增加一个淡入效果
+            hint.classList.add('fade-in-up', 'show');
+        } else {
+            hint.classList.add("hidden");
+            hint.classList.remove('show');
+        }
+    });
+
+    // 高级设置展开/折叠
+    document.getElementById("toggleAdvancedSettings").addEventListener("click", function () {
+        const content = document.getElementById("advancedSettingsContent");
+        const arrow = document.getElementById("arrowIcon");
+
+        if (content.classList.contains("hidden")) {
+            content.classList.remove("hidden");
+            content.style.maxHeight = content.scrollHeight + "px"; // 设置 max-height 为实际高度
+            arrow.classList.remove("rotate-0");
+            arrow.classList.add("rotate-180");
+        } else {
+            content.style.maxHeight = "0"; // 动画收起
+            content.addEventListener('transitionend', function handler() {
+                content.classList.add("hidden");
+                content.removeEventListener('transitionend', handler);
+            });
+            arrow.classList.remove("rotate-180");
+            arrow.classList.add("rotate-0");
+        }
+    });
+
+
+    // 提交逻辑
+    async function submitIteration() {
+        if (isSubmitting) return;
+
+        const prompt = document.getElementById("prompt").value.trim();
+        const files = document.getElementById("folderUpload").files;
+
+        if (!prompt || files.length === 0) {
+            alert("请填写 Prompt 并选择图像数据集！");
+            return;
+        }
+
+        isSubmitting = true;
+        const submitBtn = document.getElementById("submitBtn");
+        const loadingEl = document.getElementById("loading");
+        const resultEl = document.getElementById("result");
+        const processingCountEl = document.getElementById("processingCount");
+        const progressBar = document.getElementById("progressBar");
+        const resultMsgEl = document.getElementById("resultMsg");
+
+        // 禁用按钮并更新文本
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+                <svg class="animate-spin-custom inline-block -ml-1 mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m0 0H15"></path></svg>
+                正在提交...
+            `;
+
+        // 隐藏结果，显示加载
+        resultEl.classList.remove("show");
+        resultEl.classList.add("hidden");
+        loadingEl.classList.remove("hidden");
+        void loadingEl.offsetWidth; // 强制重排以触发动画
+        loadingEl.classList.add("show");
+
+        processingCountEl.textContent = files.length;
+        progressBar.style.width = '0%'; // 重置进度条
+
+        const formData = new FormData();
+        formData.append("prompt", prompt);
+        for (let i = 0; i < files.length; i++) {
+            formData.append("images", files[i]);
+        }
+
+        // 模拟进度条更新（因为后端是同步返回，这里只能做伪进度条）
+        let simulatedProgress = 0;
+        const progressInterval = setInterval(() => {
+            simulatedProgress += Math.random() * 10; // 每次增加随机值
+            if (simulatedProgress > 90) simulatedProgress = 90; // 不到100%
+            progressBar.style.width = `${simulatedProgress}%`;
+        }, 300);
+
+
+        try {
+            // 模拟网络请求延迟，让加载动画能显示一会儿
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const resp = await fetch("/iterate", {
+                method: "POST",
+                body: formData,
+            });
+            const result = await resp.json();
+
+            clearInterval(progressInterval); // 清除模拟进度条
+            progressBar.style.width = '100%'; // 完成进度条
+
+            // 隐藏加载，显示结果
+            loadingEl.classList.remove("show");
+            setTimeout(() => loadingEl.classList.add("hidden"), 400); // 延时隐藏，让动画流畅
+
+            resultMsgEl.textContent = result.message || "未知响应";
+            resultEl.classList.remove("hidden");
+            void resultEl.offsetWidth;
+            resultEl.classList.add("show");
+
+        } catch (err) {
+            console.error("提交失败:", err);
+            clearInterval(progressInterval); // 清除模拟进度条
+            progressBar.style.width = '0%'; // 失败时重置进度条
+            alert("提交失败：" + (err.message || "网络或服务器错误"));
+
+            // 隐藏加载
+            loadingEl.classList.remove("show");
+            setTimeout(() => loadingEl.classList.add("hidden"), 400);
+
+        } finally {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `
+                    <svg class="inline-block -ml-1 mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2// ... 接上一段代码的 finally 块末尾 ...
+" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    立即启动迭代
+                `;
+        }
     }
-  }
 </script>
+</body>
+</html>

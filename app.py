@@ -209,6 +209,9 @@ def test():
 def home():
     return render_template("index.html")
 
+@app.route("/index.html")
+def index():
+    return render_template("index.html")
 
 @app.route("/graph-iteration.html")
 def graph_iteration():

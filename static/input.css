@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* v4 所有的配置（如扫描路径）现在都是全自动的 */
+/* 如果你需要自定义主题色，可以像这样写： */
+@theme {
+  --color-brand: #3b82f6;
+}
+
+/* 你原来的自定义样式可以直接保留 */
+.fade-in {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fade-in.show {
+    opacity: 1;
+    transform: translateY(0);
+}
