@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "tailwindcss": "^4.0.0"
+  },
+  "scripts": {
+    "dev": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/static/tailwind.css --watch",
+    "build": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/static/tailwind.css --minify"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}

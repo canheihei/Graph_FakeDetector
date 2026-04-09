@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Deepfake Defender - 进化图谱对抗系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {sans: ['Inter', 'sans-serif']},
+                    colors: {
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': {transform: 'translateY(0)'},
+                            '50%': {transform: 'translateY(-10px)'}
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        .fade-in-up.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .bg-grid-pattern {
+            background-image: radial-gradient(#e0e7ff 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .report-frame {
+            min-height: 620px;
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col relative overflow-x-hidden font-sans text-gray-800">
+<div class="absolute inset-0 bg-grid-pattern z-0 opacity-60"></div>
+<div class="absolute top-0 left-0 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"></div>
+<div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"
+     style="animation-delay: 2s"></div>
+
+<main class="relative z-10 px-4 sm:px-6 lg:px-8 py-12">
+    <section class="max-w-3xl mx-auto text-center mb-12 fade-in-up">
+        <div class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-semibold tracking-wide uppercase mb-4">
+            <span class="w-2 h-2 bg-indigo-600 rounded-full mr-2 animate-pulse"></span>
+            System Online v2.4.0
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight mb-4">
+            基于进化图谱的<br/>
+            <span class="text-indigo-600">Deepfake 对抗与识别系统</span>
+        </h1>
+        <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+            集成多模态图谱进化、域泛化对抗训练与高精度虚假人脸检测的一体化控制台。
+        </p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto fade-in-up">
+        <a href="graph-iteration.html"
+           class="group relative block h-full bg-white rounded-2xl p-8 shadow-md border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-50 rounded-full opacity-50 blur-xl group-hover:bg-indigo-100 transition-colors"></div>
+            <div class="relative z-10">
+                <div class="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center text-white mb-6 shadow-lg shadow-indigo-200">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m0 0H15"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors">图谱进化配置</h3>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    通过 Prompt 驱动图谱结构迭代，上传数据集进行对抗样本生成与域泛化训练。
+                </p>
+                <div class="flex items-center text-indigo-600 font-medium text-sm">
+                    进入配置
+                    <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none"
+                         stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                    </svg>
+                </div>
+            </div>
+        </a>
+
+        <a href="image-recognition.html"
+           class="group relative block h-full bg-white rounded-2xl p-8 shadow-md border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-green-50 rounded-full opacity-50 blur-xl group-hover:bg-green-100 transition-colors"></div>
+            <div class="relative z-10">
+                <div class="w-14 h-14 bg-gray-900 rounded-xl flex items-center justify-center text-white mb-6 shadow-lg shadow-gray-300">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors">虚假人脸识别</h3>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    上传单张或批量图片，利用训练好的图谱模型进行深度伪造检测与证据溯源。
+                </p>
+                <div class="flex items-center text-indigo-600 font-medium text-sm">
+                    开始检测
+                    <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none"
+                         stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                    </svg>
+                </div>
+            </div>
+        </a>
+
+        <a href="visualization.html"
+           class="group relative block h-full bg-white rounded-2xl p-8 shadow-md border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-purple-50 rounded-full opacity-50 blur-xl group-hover:bg-purple-100 transition-colors"></div>
+            <div class="relative z-10">
+                <div class="w-14 h-14 bg-white border-2 border-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-6 shadow-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors">图谱数据透视</h3>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    (Beta) 三维可视化展示知识图谱节点关系，分析对抗样本的特征分布情况。
+                </p>
+                <div class="flex items-center text-gray-400 font-medium text-sm group-hover:text-indigo-600 transition-colors">
+                    查看仪表盘
+                    <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none"
+                         stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                    </svg>
+                </div>
+            </div>
+        </a>
+    </section>
+
+    <section class="max-w-7xl mx-auto mt-16 fade-in-up">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-8">
+            <div>
+                <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/90 border border-indigo-100 text-indigo-700 text-xs font-semibold tracking-wide uppercase mb-4 shadow-sm">
+                    Report Sync
+                </div>
+                <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight mb-3">数据集识别效果可视化</h2>
+                <p class="text-gray-500 max-w-3xl">
+                    自动扫描 `reports` 下的 benchmark 产物，首页同步展示关键指标、历史版本和原始报告预览。后续新增其他数据集报告后，这里会自动接入。
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="report-sync-button"
+                        class="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors">
+                    同步 reports
+                </button>
+                <div id="report-sync-status"
+                     class="text-sm text-gray-500 bg-white/80 border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
+                    待同步
+                </div>
+            </div>
+        </div>
+
+        <div id="report-overview-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8"></div>
+
+        <div id="report-empty-state"
+             class="hidden bg-white/90 border border-dashed border-gray-300 rounded-3xl px-8 py-12 text-center shadow-sm">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 17v-6a2 2 0 012-2h7M9 5h10a2 2 0 012 2v10a2 2 0 01-2 2H9a2 2 0 01-2-2V7a2 2 0 012-2zM5 7v10a2 2 0 002 2h10"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">暂无可展示的 benchmark 报告</h3>
+            <p class="text-gray-500 max-w-xl mx-auto">
+                运行 `visualize_detect_benchmark.py` 生成新的报告目录后，点击上方“同步 reports”即可刷新首页数据。
+            </p>
+        </div>
+
+        <div id="report-dashboard" class="grid grid-cols-1 xl:grid-cols-[1.05fr_1.25fr] gap-8 mb-8"></div>
+
+        <div>
+            <div class="flex items-center justify-between gap-4 mb-5">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900">历史报告</h3>
+                    <p class="text-sm text-gray-500 mt-1">支持切换预览、打开源报告和手动删除冗余结果。</p>
+                </div>
+                <div id="report-list-count"
+                     class="text-sm text-gray-500 bg-white/80 border border-gray-200 rounded-xl px-4 py-2 shadow-sm"></div>
+            </div>
+            <div id="report-list" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+        </div>
+    </section>
+</main>
+
+<footer class="bg-white/95 border-t border-gray-200 py-3 fade-in-up z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+        <div class="flex items-center space-x-6 mb-2 md:mb-0">
+            <span class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> 模型节点: <strong>Active</strong></span>
+            <span class="hidden sm:inline">|</span>
+            <span class="flex items-center">已索引图谱实体: <strong class="ml-1 font-mono">1,024,853</strong></span>
+            <span class="hidden sm:inline">|</span>
+            <span class="flex items-center">今日防御拦截: <strong id="defense-count" class="ml-1 font-mono text-indigo-600">892</strong></span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span>Latency: <span class="text-green-600 font-mono">12ms</span></span>
+            <span>&copy; 2026 GraphXFlow Research.</span>
+        </div>
+    </div>
+</footer>
+
+<script>
+    const initialReportGallery = {{ report_gallery | tojson }};
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat('zh-CN').format(Number(value || 0));
+    }
+
+    function formatPercent(value) {
+        const numeric = Number(value || 0);
+        return `${numeric.toFixed(2)}%`;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function buildOverviewCards(gallery) {
+        const latest = gallery.latest;
+        const reportCount = gallery.overview?.report_count || 0;
+        const totalSamples = latest?.metrics?.total_samples || 0;
+        const validPredictions = latest?.metrics?.valid_predictions || 0;
+        const latestAccuracy = latest?.metrics?.accuracy_valid_pct || 0;
+        const latestUpdated = latest?.updated_at_display || '--';
+
+        return [
+            {
+                label: '已同步报告',
+                value: formatNumber(reportCount),
+                detail: '自动发现 reports 目录中的 benchmark',
+                tone: 'from-indigo-50 to-white text-indigo-700'
+            },
+            {
+                label: '最新准确率',
+                value: formatPercent(latestAccuracy),
+                detail: latest ? `${escapeHtml(latest.title)} · valid accuracy` : '暂无报告',
+                tone: 'from-gray-900 to-gray-800 text-white'
+            },
+            {
+                label: '最新样本数',
+                value: formatNumber(totalSamples),
+                detail: `Valid predictions ${formatNumber(validPredictions)}`,
+                tone: 'from-emerald-50 to-white text-emerald-700'
+            },
+            {
+                label: '最近更新时间',
+                value: latestUpdated,
+                detail: latest ? '来自最新 benchmark 产物' : '等待新报告同步',
+                tone: 'from-sky-50 to-white text-sky-700'
+            }
+        ];
+    }
+
+    function renderOverview(gallery) {
+        const container = document.getElementById('report-overview-grid');
+        const cards = buildOverviewCards(gallery);
+        container.innerHTML = cards.map((card, index) => `
+            <div class="rounded-3xl border border-gray-100 bg-gradient-to-br ${card.tone} shadow-lg shadow-slate-100 p-6">
+                <div class="text-xs uppercase tracking-[0.22em] ${index === 1 ? 'text-white/70' : 'text-current/70'} mb-3">${escapeHtml(card.label)}</div>
+                <div class="text-3xl font-extrabold ${index === 1 ? 'text-white' : 'text-gray-900'} mb-2">${escapeHtml(card.value)}</div>
+                <div class="text-sm ${index === 1 ? 'text-white/70' : 'text-gray-500'}">${card.detail}</div>
+            </div>
+        `).join('');
+    }
+
+    function buildDashboard(report) {
+        return `
+            <div class="bg-white/95 rounded-3xl border border-gray-100 shadow-xl shadow-slate-100 overflow-hidden">
+                <div class="px-7 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-semibold tracking-wide uppercase mb-4">
+                                Latest Report
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-2">${escapeHtml(report.title)}</h3>
+                            <p class="text-sm text-gray-500">创建于 ${escapeHtml(report.created_at_display)} · 最近更新 ${escapeHtml(report.updated_at_display)}</p>
+                        </div>
+                        <div class="text-xs font-semibold text-indigo-600 bg-white border border-indigo-100 rounded-full px-3 py-1 shadow-sm">
+                            #${escapeHtml(report.rank || 1)} report
+                        </div>
+                    </div>
+                </div>
+                <div class="p-7">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div class="rounded-2xl bg-gray-900 text-white p-5 shadow-lg shadow-gray-200">
+                            <div class="text-xs uppercase tracking-[0.2em] text-white/70 mb-2">准确率</div>
+                            <div class="text-4xl font-extrabold">${formatPercent(report.metrics.accuracy_valid_pct)}</div>
+                            <div class="text-sm text-white/70 mt-2">${formatNumber(report.metrics.correct_predictions)} / ${formatNumber(report.metrics.valid_predictions)} 正确</div>
+                        </div>
+                        <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-5">
+                            <div class="text-xs uppercase tracking-[0.2em] text-indigo-600 mb-2">平衡准确率</div>
+                            <div class="text-3xl font-bold text-gray-900">${formatPercent(report.metrics.balanced_accuracy_pct)}</div>
+                            <div class="text-sm text-gray-500 mt-2">正确样本平均置信度 ${formatPercent(report.metrics.avg_confidence_correct_pct)}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                            <div class="text-xs uppercase tracking-wide text-emerald-700 mb-1">Precision Fake</div>
+                            <div class="text-2xl font-bold text-gray-900">${formatPercent(report.metrics.precision_fake_pct)}</div>
+                        </div>
+                        <div class="rounded-2xl border border-sky-100 bg-sky-50 p-4">
+                            <div class="text-xs uppercase tracking-wide text-sky-700 mb-1">Recall Fake</div>
+                            <div class="text-2xl font-bold text-gray-900">${formatPercent(report.metrics.recall_fake_pct)}</div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50 p-5 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-sm font-semibold text-gray-900">误判结构</h4>
+                            <div class="text-xs font-medium text-gray-500">错误 ${formatNumber(report.metrics.error_count)} | TP ${formatNumber(report.metrics.tp)} | TN ${formatNumber(report.metrics.tn)}</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="rounded-xl bg-white border border-gray-200 px-4 py-3">
+                                <div class="text-xs text-gray-500 mb-1">FP</div>
+                                <div class="text-2xl font-bold text-amber-600">${formatNumber(report.metrics.fp)}</div>
+                            </div>
+                            <div class="rounded-xl bg-white border border-gray-200 px-4 py-3">
+                                <div class="text-xs text-gray-500 mb-1">FN</div>
+                                <div class="text-2xl font-bold text-rose-600">${formatNumber(report.metrics.fn)}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <a id="featured-open-report"
+                           class="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+                           href="${report.html_url || '#'}"
+                           target="_blank"
+                           rel="noreferrer">
+                            打开原始报告
+                        </a>
+                        <a id="featured-open-metrics"
+                           class="inline-flex items-center px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors ${report.metrics_url ? '' : 'pointer-events-none opacity-40'}"
+                           href="${report.metrics_url || '#'}"
+                           target="_blank"
+                           rel="noreferrer">
+                            查看 metrics.json
+                        </a>
+                        <a id="featured-open-csv"
+                           class="inline-flex items-center px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors ${report.predictions_url ? '' : 'pointer-events-none opacity-40'}"
+                           href="${report.predictions_url || '#'}"
+                           target="_blank"
+                           rel="noreferrer">
+                            下载 predictions.csv
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white/95 rounded-3xl border border-gray-100 shadow-xl shadow-slate-100 overflow-hidden">
+                <div class="px-7 py-6 border-b border-gray-100 flex items-center justify-between gap-4">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-indigo-600 mb-2">Embedded Preview</div>
+                        <h3 class="text-2xl font-bold text-gray-900">数据集识别报告预览</h3>
+                    </div>
+                    <div class="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-3 py-1">${escapeHtml(report.name)}</div>
+                </div>
+                <div class="p-4 bg-slate-50">
+                    ${report.html_url ? `
+                        <div class="report-frame rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-inner">
+                            <iframe class="w-full h-[620px] bg-white" title="Benchmark Report Preview" src="${report.html_url}"></iframe>
+                        </div>
+                    ` : `
+                        <div class="report-frame rounded-2xl border border-dashed border-gray-300 bg-white px-8 py-12 text-center">
+                            <div class="w-14 h-14 mx-auto rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center mb-4">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M7 16V4m0 0L3 8m4-4l4 4m6 8v4m0 0l-4-4m4 4l4-4M7 12h10"></path>
+                                </svg>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">该报告没有可嵌入的 HTML 预览</h4>
+                            <p class="text-sm text-gray-500 max-w-md mx-auto">可以直接打开原始报告，或查看 metrics.json 和 predictions.csv。</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderReportList(gallery, selectedName) {
+        const container = document.getElementById('report-list');
+        const countBadge = document.getElementById('report-list-count');
+        const reports = gallery.reports || [];
+
+        countBadge.textContent = `共 ${formatNumber(reports.length)} 份报告`;
+        container.innerHTML = reports.map(report => {
+            const selected = report.name === selectedName;
+            return `
+                <article class="rounded-3xl border ${selected ? 'border-indigo-200 shadow-indigo-100' : 'border-gray-100 shadow-slate-100'} bg-white/95 shadow-lg overflow-hidden">
+                    <div class="px-6 py-5 border-b ${selected ? 'border-indigo-100 bg-indigo-50/70' : 'border-gray-100 bg-white'}">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${selected ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'} mb-3">
+                                    ${selected ? 'Previewing' : `Report #${report.rank}`}
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900 mb-1">${escapeHtml(report.title)}</h4>
+                                <p class="text-sm text-gray-500">更新于 ${escapeHtml(report.updated_at_display)}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs uppercase tracking-[0.2em] text-gray-400 mb-1">Accuracy</div>
+                                <div class="text-2xl font-extrabold text-gray-900">${formatPercent(report.metrics.accuracy_valid_pct)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 gap-3 mb-5">
+                            <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                                <div class="text-xs text-gray-500 mb-1">Samples</div>
+                                <div class="text-xl font-bold text-gray-900">${formatNumber(report.metrics.total_samples)}</div>
+                            </div>
+                            <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                                <div class="text-xs text-gray-500 mb-1">Balanced</div>
+                                <div class="text-xl font-bold text-gray-900">${formatPercent(report.metrics.balanced_accuracy_pct)}</div>
+                            </div>
+                            <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
+                                <div class="text-xs text-emerald-700 mb-1">FP</div>
+                                <div class="text-xl font-bold text-emerald-900">${formatNumber(report.metrics.fp)}</div>
+                            </div>
+                            <div class="rounded-2xl bg-rose-50 border border-rose-100 p-4">
+                                <div class="text-xs text-rose-700 mb-1">FN</div>
+                                <div class="text-xl font-bold text-rose-900">${formatNumber(report.metrics.fn)}</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <button data-action="preview" data-report="${escapeHtml(report.name)}"
+                                    class="inline-flex items-center px-4 py-2.5 rounded-xl ${selected ? 'bg-gray-900 text-white' : 'bg-indigo-600 text-white'} text-sm font-semibold hover:opacity-90 transition-opacity">
+                                ${selected ? '当前预览' : '切换预览'}
+                            </button>
+                            <a class="inline-flex items-center px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors ${report.html_url ? '' : 'pointer-events-none opacity-40'}"
+                               href="${report.html_url || '#'}"
+                               target="_blank"
+                               rel="noreferrer">
+                                打开报告
+                            </a>
+                            <button data-action="delete" data-report="${escapeHtml(report.name)}"
+                                    class="inline-flex items-center px-4 py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 text-sm font-semibold hover:bg-rose-50 transition-colors">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+    }
+
+    function renderGallery(gallery, selectedName = null) {
+        const reports = gallery.reports || [];
+        const emptyState = document.getElementById('report-empty-state');
+        const dashboard = document.getElementById('report-dashboard');
+        const list = document.getElementById('report-list');
+
+        renderOverview(gallery);
+
+        if (!reports.length) {
+            emptyState.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+            list.innerHTML = '';
+            document.getElementById('report-list-count').textContent = '共 0 份报告';
+            return;
+        }
+
+        emptyState.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+
+        const selectedReport = reports.find(report => report.name === selectedName) || reports[0];
+        dashboard.innerHTML = buildDashboard(selectedReport);
+        renderReportList(gallery, selectedReport.name);
+        window.currentSelectedReport = selectedReport.name;
+    }
+
+    async function syncReports() {
+        const syncButton = document.getElementById('report-sync-button');
+        const syncStatus = document.getElementById('report-sync-status');
+        syncButton.disabled = true;
+        syncButton.classList.add('opacity-70', 'cursor-not-allowed');
+        syncStatus.textContent = '同步中...';
+
+        try {
+            const response = await fetch('/api/reports');
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to sync reports');
+            }
+            window.currentGallery = payload;
+            renderGallery(window.currentGallery, window.currentSelectedReport);
+            syncStatus.textContent = `已同步 ${formatNumber(payload.overview.report_count)} 份报告`;
+        } catch (error) {
+            syncStatus.textContent = `同步失败: ${error.message}`;
+        } finally {
+            syncButton.disabled = false;
+            syncButton.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    }
+
+    async function deleteReport(reportName) {
+        const syncStatus = document.getElementById('report-sync-status');
+        syncStatus.textContent = `删除中: ${reportName}`;
+        try {
+            const response = await fetch(`/api/reports/${encodeURIComponent(reportName)}`, {
+                method: 'DELETE'
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Delete failed');
+            }
+            window.currentGallery = payload;
+            renderGallery(window.currentGallery, window.currentSelectedReport === reportName ? null : window.currentSelectedReport);
+            syncStatus.textContent = `已删除 ${reportName}`;
+        } catch (error) {
+            syncStatus.textContent = `删除失败: ${error.message}`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.fade-in-up').forEach(el => el.classList.add('show'));
+
+        window.currentGallery = initialReportGallery;
+        window.currentSelectedReport = initialReportGallery.latest?.name || null;
+        renderGallery(window.currentGallery, window.currentSelectedReport);
+
+        document.getElementById('report-sync-status').textContent =
+            window.currentGallery.reports?.length ? '已加载首页数据' : '等待报告同步';
+
+        document.getElementById('report-sync-button').addEventListener('click', syncReports);
+
+        document.getElementById('report-list').addEventListener('click', event => {
+            const actionTarget = event.target.closest('[data-action]');
+            if (!actionTarget) {
+                return;
+            }
+
+            const action = actionTarget.dataset.action;
+            const reportName = actionTarget.dataset.report;
+            if (!reportName) {
+                return;
+            }
+
+            if (action === 'preview') {
+                renderGallery(window.currentGallery, reportName);
+                return;
+            }
+
+            if (action === 'delete') {
+                const confirmed = window.confirm(`确认删除报告 ${reportName} 吗？该操作会移除 reports 下对应目录。`);
+                if (confirmed) {
+                    deleteReport(reportName);
+                }
+            }
+        });
+
+        const statNum = document.getElementById('defense-count');
+        if (statNum) {
+            setInterval(() => {
+                const current = parseInt(statNum.innerText.replace(/,/g, ''), 10);
+                if (!Number.isNaN(current) && Math.random() > 0.7) {
+                    statNum.innerText = (current + Math.floor(Math.random() * 3)).toLocaleString();
+                }
+            }, 2000);
+        }
+    });
+</script>
+</body>
+</html>
