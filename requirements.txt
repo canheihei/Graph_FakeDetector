@@ -4,6 +4,7 @@ neo4j==5.28.2
 openai==2.16.0
 opencv-python-headless==4.10.0.84
 Pillow==12.1.0
+python-dotenv==1.1.1
 pretrainedmodels==0.7.4
 pymilvus==2.6.4
 sentence_transformers==5.1.2

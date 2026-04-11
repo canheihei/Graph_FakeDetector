@@ -88,6 +88,22 @@ def _parse_threshold(source, key="semantic_threshold", default=0.80):
         raise ValueError(f"{key} must be between 0 and 1")
     return value
 
+
+def _parse_optional_threshold(source, key: str):
+    raw = source.get(key)
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        value = float(text)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{key} must be a float between 0 and 1") from exc
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{key} must be between 0 and 1")
+    return value
+
 def _build_report_gallery_payload():
     reports = []
     for index, report in enumerate(report_gallery.list_reports()):
@@ -181,6 +197,11 @@ def detect():
                     request.form,
                     "use_llm_generation",
                     False,
+                ),
+                decision_profile=(request.form.get("decision_profile") or "").strip() or None,
+                decision_threshold_override=_parse_optional_threshold(
+                    request.form,
+                    "decision_threshold_override",
                 ),
             )
         )

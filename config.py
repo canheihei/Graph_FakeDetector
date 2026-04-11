@@ -2,10 +2,12 @@ import multiprocessing
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from project_paths import resolve_datasets_root
 
 # Storage
 PROJECT_ROOT = Path(__file__).resolve().parent
+load_dotenv(PROJECT_ROOT / ".env")
 DATASETS_ROOT = resolve_datasets_root(PROJECT_ROOT)
 UPLOAD_FOLDER = str(DATASETS_ROOT / "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)

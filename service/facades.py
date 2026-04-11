@@ -8,13 +8,14 @@ from typing import Any, Dict, Iterable, List, Tuple
 from werkzeug.utils import secure_filename
 
 from alignment.evolver import UnmappedFeature
-from detector_config import get_detector_config
+from detector_config import get_detection_decision_config, get_detector_config
 from detectors.forensics_utils import clamp01, normalize
 from service.common_utils import (
     build_detection_response,
     get_image_base64_list,
     safe_path_name,
 )
+from service.decision_policy import compute_adaptive_fusion, resolve_decision_threshold
 from service.detect_client_v2 import decide_v2
 from service.graph_semantics import GraphSemanticGovernance
 from service.llm_chain import call_qwen, match_domain, reasoning
@@ -33,6 +34,8 @@ class DetectRequest:
     auto_evolve_enabled: bool
     semantic_threshold: float
     use_llm_generation: bool
+    decision_profile: str | None = None
+    decision_threshold_override: float | None = None
 
 
 @dataclass(frozen=True)
@@ -212,6 +215,7 @@ class DetectionFacade:
         self._graph_evolver = graph_evolver
         self._evidence_builder = evidence_builder
         self._logger = logger
+        self._decision_config = get_detection_decision_config()
 
     def execute(self, request: DetectRequest) -> Dict:
         detector_results = self._hub.run(request.image_bytes)
@@ -243,7 +247,12 @@ class DetectionFacade:
         unmapped_payload = self._build_unmapped_payload(unmapped_features)
         evidence = self._evidence_builder.build(activated_subdomains) if activated_subdomains else []
         graph_decision = decide_v2(evidence)
-        decision = self._merge_decisions(detector_results, graph_decision, content_profile)
+        decision = self._merge_decisions(
+            detector_results,
+            graph_decision,
+            content_profile,
+            request=request,
+        )
         gate_diagnostics = self._build_graph_gate_diagnostics(
             detector_results,
             supports_graph_reasoning=supports_graph_reasoning,
@@ -279,6 +288,12 @@ class DetectionFacade:
         return {
             "label": decision["label"],
             "confidence": decision["confidence"],
+            "decision_fake_score": decision.get("decision_fake_score"),
+            "decision_threshold": decision.get("decision_threshold"),
+            "decision_margin": decision.get("decision_margin"),
+            "score_source": decision.get("score_source"),
+            "threshold_source": decision.get("threshold_source", "default"),
+            "decision_profile": decision.get("decision_profile"),
             "evidence": evidence,
             "reasoning": reasoning_payload,
             "reasoning_type": reasoning_type,
@@ -299,6 +314,7 @@ class DetectionFacade:
         detector_results,
         graph_decision: Dict,
         content_profile: Dict[str, Any],
+        request: DetectRequest | None = None,
     ) -> Dict:
         detector_map = {result.name: result for result in detector_results}
         detector_signals = self._extract_detector_signals(detector_map, content_profile)
@@ -306,6 +322,8 @@ class DetectionFacade:
             (item for item in detector_signals if item["name"] == "CalibratedVision"),
             None,
         )
+        decision_profile = (request.decision_profile or "").strip() if request else ""
+        threshold_override = request.decision_threshold_override if request else None
 
         if detector_signals:
             total_weight = sum(item["weight"] for item in detector_signals)
@@ -344,15 +362,44 @@ class DetectionFacade:
                 "decision_fake_score": round(direct_score, 3),
                 "decision_margin": None,
                 "score_source": "unsupported_scope_fallback",
+                "threshold_source": "unsupported_scope",
+                "decision_profile": decision_profile or None,
             }
 
+        has_primary = bool(primary_signal and primary_signal.get("weight_ready", False))
+        base_threshold = (
+            float(primary_signal.get("threshold", 0.5))
+            if has_primary
+            else float(self._decision_config.fallback_threshold)
+        )
+        decision_threshold, threshold_source = resolve_decision_threshold(
+            base_threshold=base_threshold,
+            profile_name=decision_profile,
+            override_threshold=threshold_override,
+            profile_thresholds=self._decision_config.domain_threshold_profiles,
+        )
+
+        fusion_debug: Dict[str, Any] = {}
         if primary_signal and primary_signal.get("weight_ready", False):
-            fused_score = clamp01(primary_signal["score"])
-            decision_threshold = float(primary_signal.get("threshold", 0.5))
-            score_source = "calibrated_vision"
+            auxiliary_signals = [
+                signal for signal in detector_signals
+                if signal["name"] != "CalibratedVision"
+            ]
+            auxiliary_score = self._weighted_signal_score(auxiliary_signals)
+            fusion_debug = compute_adaptive_fusion(
+                primary_score=float(primary_signal["score"]),
+                auxiliary_score=auxiliary_score,
+                portrait_confidence=float(content_profile.get("portrait_confidence", 0.0)),
+                decision_threshold=decision_threshold,
+                config=self._decision_config.adaptive_fusion,
+            )
+            fused_score = clamp01(float(fusion_debug["fused_score"]))
+            score_source = str(fusion_debug.get("mode", "adaptive_fusion"))
         else:
-            fused_score = clamp01(0.78 * direct_score + 0.22 * graph_confidence)
-            decision_threshold = 0.46
+            fused_score = clamp01(
+                float(self._decision_config.fallback_direct_weight) * direct_score
+                + float(self._decision_config.fallback_graph_weight) * graph_confidence
+            )
             score_source = "fusion"
 
         strong_count = sum(1 for item in detector_signals if item["score"] >= 0.55)
@@ -360,8 +407,8 @@ class DetectionFacade:
 
         is_fake = False
         if primary_signal and primary_signal.get("weight_ready", False):
-            is_fake = primary_signal["score"] >= decision_threshold
-            confidence_value = primary_signal["score"] if is_fake else 1.0 - primary_signal["score"]
+            is_fake = fused_score >= decision_threshold
+            confidence_value = fused_score if is_fake else 1.0 - fused_score
         else:
             if strong_count >= 2 and fused_score >= decision_threshold:
                 is_fake = True
@@ -382,10 +429,28 @@ class DetectionFacade:
             "decision_fake_score": round(fused_score, 3),
             "decision_margin": round(decision_margin, 3),
             "score_source": score_source,
+            "threshold_source": threshold_source,
+            "decision_profile": decision_profile or None,
             "strong_signal_count": strong_count,
             "moderate_signal_count": moderate_count,
             "signal_sources": [item["name"] for item in detector_signals],
+            "adaptive_blend_ratio": fusion_debug.get("blend_ratio"),
+            "adaptive_shift_indicator": fusion_debug.get("shift_indicator"),
+            "auxiliary_score": fusion_debug.get("auxiliary_score"),
         }
+
+    @staticmethod
+    def _weighted_signal_score(signals: List[Dict[str, Any]]) -> float | None:
+        if not signals:
+            return None
+        total_weight = sum(float(item.get("weight", 0.0)) for item in signals)
+        if total_weight <= 1e-6:
+            return None
+        weighted_sum = sum(
+            float(item.get("score", 0.0)) * float(item.get("weight", 0.0))
+            for item in signals
+        )
+        return clamp01(weighted_sum / total_weight)
 
     def _extract_detector_signals(
         self,
@@ -501,6 +566,7 @@ class DetectionFacade:
             "face_confidence": round(float(face_confidence), 3),
             "human_face_score": round(float(human_face_score), 3),
             "photo_texture_score": round(float(photo_texture_score), 3),
+            "quality_risk": round(float(quality_risk), 3),
             "portrait_confidence": round(float(portrait_confidence), 3),
             "allow_graph_reasoning": supported_input,
             "allow_face_fusion": supported_input,

@@ -46,6 +46,25 @@ class MetaEnsembleConfig:
     reliability: ReliabilityPolicy = field(default_factory=ReliabilityPolicy)
 
 
+@dataclass(frozen=True)
+class AdaptiveFusionConfig:
+    base_blend: float = 0.08
+    max_blend: float = 0.72
+    gap_weight: float = 0.65
+    portrait_weight: float = 0.20
+    margin_weight: float = 0.15
+    margin_reference: float = 0.12
+
+
+@dataclass(frozen=True)
+class DetectionDecisionConfig:
+    fallback_direct_weight: float = 0.78
+    fallback_graph_weight: float = 0.22
+    fallback_threshold: float = 0.46
+    domain_threshold_profiles: Mapping[str, float] = field(default_factory=dict)
+    adaptive_fusion: AdaptiveFusionConfig = field(default_factory=AdaptiveFusionConfig)
+
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_WEIGHTS_ROOT = PROJECT_ROOT / "weights"
 WEIGHTS_ROOT = Path(os.getenv("GRAPH_FAKEDETECTOR_WEIGHTS_ROOT", str(DEFAULT_WEIGHTS_ROOT)))
@@ -157,6 +176,15 @@ DETECTOR_CONFIGS: Dict[str, DetectorConfig] = {
 
 
 META_ENSEMBLE_CONFIG = MetaEnsembleConfig()
+DETECTION_DECISION_CONFIG = DetectionDecisionConfig(
+    domain_threshold_profiles={
+        # External-domain calibration defaults (2026-04-11, dg_round5 + sample300).
+        "celeb_df": 0.61,
+        "celebdf": 0.61,
+        "dfdc": 0.48,
+        "wilddeepfake": 0.11,
+    }
+)
 
 
 def get_detector_config(name: str) -> DetectorConfig:
@@ -178,3 +206,7 @@ def score_from_placeholder_proxy(proxy_score: float, score_range: Optional[Place
         return max(0.0, min(1.0, proxy_score))
     shifted = score_range.center + score_range.gain * (proxy_score - score_range.center)
     return max(score_range.minimum, min(score_range.maximum, shifted))
+
+
+def get_detection_decision_config() -> DetectionDecisionConfig:
+    return DETECTION_DECISION_CONFIG

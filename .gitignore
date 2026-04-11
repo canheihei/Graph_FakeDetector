@@ -3,6 +3,9 @@
 .idea/
 node_modules/
 .pytest_cache/
+.env
+.env.local
+.env.*.local
 .codex*
 .winscp*
 AGENTS*.md
@@ -16,6 +19,7 @@ weights/
 claude.md
 CLAUDE.md
 config.py
+!.env.example
 
 # Python
 __pycache__/

@@ -403,7 +403,20 @@ GRAPH_FAKEDETECTOR_WEIGHTS_ROOT=/path/to/weights
 - `ALI_API_KEY`
 - `ALI_BASE_URL`
 
-建议在实际部署中将敏感配置迁移到环境变量或独立密钥管理，而不是直接写入仓库文件。
+建议在实际部署中将敏感配置放入项目根目录 `.env` 或独立密钥管理，而不是直接写入仓库文件。
+
+本地 `.env` 示例:
+
+```env
+ALI_API_KEY=
+ALI_BASE_URL=https://api.moonshot.cn/v1
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASS=
+FEATURE_THRESHOLD=0.4
+```
+
+项目启动时会优先读取项目根目录的 `.env`，`.env` 已被 `.gitignore` 忽略，不会进入 Git。
 
 ## 训练与评测
 

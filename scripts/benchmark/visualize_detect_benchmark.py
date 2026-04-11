@@ -40,6 +40,17 @@ class PredictionRecord:
     confidence: float
     is_correct: bool
     latency_ms: float
+    decision_fake_score: float = 0.0
+    decision_threshold: float = 0.0
+    decision_margin: float = 0.0
+    score_source: str = ""
+    threshold_source: str = ""
+    decision_profile: str = ""
+    reasoning_type: str = ""
+    risk_level: str = ""
+    needs_review: bool = False
+    review_reasons_count: int = 0
+    diagnostic_chain_len: int = 0
     error: str = ""
 
 
@@ -68,7 +79,13 @@ class BenchmarkSummary:
 
 
 class DetectClient:
-    def predict(self, image_path: Path, semantic_threshold: float) -> Dict:
+    def predict(
+        self,
+        image_path: Path,
+        semantic_threshold: float,
+        decision_profile: Optional[str],
+        decision_threshold_override: Optional[float],
+    ) -> Dict:
         raise NotImplementedError
 
 
@@ -80,7 +97,13 @@ class InternalDetectClient(DetectClient):
         self._detect_facade = detect_facade
         self._request_cls = DetectRequest
 
-    def predict(self, image_path: Path, semantic_threshold: float) -> Dict:
+    def predict(
+        self,
+        image_path: Path,
+        semantic_threshold: float,
+        decision_profile: Optional[str],
+        decision_threshold_override: Optional[float],
+    ) -> Dict:
         image_bytes = image_path.read_bytes()
         return self._detect_facade.execute(
             self._request_cls(
@@ -88,6 +111,8 @@ class InternalDetectClient(DetectClient):
                 auto_evolve_enabled=False,
                 semantic_threshold=semantic_threshold,
                 use_llm_generation=False,
+                decision_profile=decision_profile,
+                decision_threshold_override=decision_threshold_override,
             )
         )
 
@@ -97,14 +122,25 @@ class HttpDetectClient(DetectClient):
         self._endpoint = endpoint.rstrip("/")
         self._timeout = timeout
 
-    def predict(self, image_path: Path, semantic_threshold: float) -> Dict:
+    def predict(
+        self,
+        image_path: Path,
+        semantic_threshold: float,
+        decision_profile: Optional[str],
+        decision_threshold_override: Optional[float],
+    ) -> Dict:
+        fields = {
+            "auto_evolve": "false",
+            "use_llm_generation": "false",
+            "semantic_threshold": str(semantic_threshold),
+        }
+        if decision_profile:
+            fields["decision_profile"] = str(decision_profile)
+        if decision_threshold_override is not None:
+            fields["decision_threshold_override"] = str(decision_threshold_override)
         payload, content_type = self._build_multipart_body(
             image_path=image_path,
-            fields={
-                "auto_evolve": "false",
-                "use_llm_generation": "false",
-                "semantic_threshold": str(semantic_threshold),
-            },
+            fields=fields,
         )
         req = request.Request(
             self._endpoint,
@@ -164,10 +200,14 @@ class DetectBenchmarkRunner:
         self,
         client: DetectClient,
         semantic_threshold: float,
+        decision_profile: Optional[str] = None,
+        decision_threshold_override: Optional[float] = None,
         workers: int = 1,
     ) -> None:
         self._client = client
         self._semantic_threshold = semantic_threshold
+        self._decision_profile = decision_profile
+        self._decision_threshold_override = decision_threshold_override
         self._workers = max(1, workers)
 
     def run(self, samples: Iterable[DatasetSample]) -> List[PredictionRecord]:
@@ -211,13 +251,42 @@ class DetectBenchmarkRunner:
     def _predict_one(self, sample: DatasetSample) -> PredictionRecord:
         start = time.perf_counter()
         try:
-            result = self._client.predict(sample.path, self._semantic_threshold)
+            result = self._client.predict(
+                sample.path,
+                self._semantic_threshold,
+                self._decision_profile,
+                self._decision_threshold_override,
+            )
             predicted_label = normalize_label(result.get("label", "ERROR"))
             confidence = coerce_float(result.get("confidence", 0.0))
+            decision_fake_score = coerce_float(result.get("decision_fake_score", 0.0))
+            decision_threshold = coerce_float(result.get("decision_threshold", 0.0))
+            decision_margin = coerce_float(result.get("decision_margin", 0.0))
+            score_source = str(result.get("score_source", "") or "")
+            threshold_source = str(result.get("threshold_source", "") or "")
+            decision_profile = str(result.get("decision_profile", "") or "")
+            reasoning_type = str(result.get("reasoning_type", "") or "")
+            risk_level = str(result.get("risk_level", "") or "")
+            needs_review = bool(result.get("needs_review", False))
+            review_reasons = result.get("review_reasons", [])
+            review_reasons_count = len(review_reasons) if isinstance(review_reasons, list) else 0
+            diagnostic_chain = result.get("diagnostic_chain", [])
+            diagnostic_chain_len = len(diagnostic_chain) if isinstance(diagnostic_chain, list) else 0
             error_message = ""
         except Exception as exc:
             predicted_label = "ERROR"
             confidence = 0.0
+            decision_fake_score = 0.0
+            decision_threshold = 0.0
+            decision_margin = 0.0
+            score_source = ""
+            threshold_source = ""
+            decision_profile = ""
+            reasoning_type = ""
+            risk_level = ""
+            needs_review = False
+            review_reasons_count = 0
+            diagnostic_chain_len = 0
             error_message = str(exc)
             print(f"[WARN] detect failed: {sample.path.name} -> {error_message}")
 
@@ -230,6 +299,17 @@ class DetectBenchmarkRunner:
             confidence=round(confidence, 6),
             is_correct=predicted_label == sample.truth_label,
             latency_ms=round(latency_ms, 3),
+            decision_fake_score=round(decision_fake_score, 6),
+            decision_threshold=round(decision_threshold, 6),
+            decision_margin=round(decision_margin, 6),
+            score_source=score_source,
+            threshold_source=threshold_source,
+            decision_profile=decision_profile,
+            reasoning_type=reasoning_type,
+            risk_level=risk_level,
+            needs_review=needs_review,
+            review_reasons_count=review_reasons_count,
+            diagnostic_chain_len=diagnostic_chain_len,
             error=error_message,
         )
 
@@ -386,6 +466,125 @@ def compute_summary(records: List[PredictionRecord]) -> BenchmarkSummary:
         fake_support=fake_support,
         real_support=real_support,
     )
+
+
+def summarize_by_threshold(records: List[PredictionRecord], threshold: float) -> Dict[str, float | int]:
+    valid_records = [record for record in records if record.predicted_label in VALID_LABELS]
+    if not valid_records:
+        return {
+            "threshold": round(float(threshold), 4),
+            "valid_count": 0,
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0,
+            "accuracy_valid": 0.0,
+            "balanced_accuracy": 0.0,
+            "precision_fake": 0.0,
+            "recall_fake": 0.0,
+            "specificity_real": 0.0,
+        }
+
+    tp = tn = fp = fn = 0
+    for record in valid_records:
+        pred_fake = record.decision_fake_score >= threshold
+        if record.truth_label == "FAKE" and pred_fake:
+            tp += 1
+        elif record.truth_label == "REAL" and not pred_fake:
+            tn += 1
+        elif record.truth_label == "REAL" and pred_fake:
+            fp += 1
+        else:
+            fn += 1
+
+    accuracy_valid = safe_div(tp + tn, len(valid_records))
+    recall_fake = safe_div(tp, tp + fn)
+    specificity_real = safe_div(tn, tn + fp)
+    precision_fake = safe_div(tp, tp + fp)
+    balanced_accuracy = 0.5 * (recall_fake + specificity_real)
+
+    return {
+        "threshold": round(float(threshold), 4),
+        "valid_count": len(valid_records),
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "accuracy_valid": accuracy_valid,
+        "balanced_accuracy": balanced_accuracy,
+        "precision_fake": precision_fake,
+        "recall_fake": recall_fake,
+        "specificity_real": specificity_real,
+    }
+
+
+def find_recommended_threshold(records: List[PredictionRecord]) -> Optional[Dict[str, float | int]]:
+    valid_records = [record for record in records if record.predicted_label in VALID_LABELS]
+    if not valid_records:
+        return None
+
+    best_result = None
+    for index in range(5, 96):
+        threshold = index / 100.0
+        summary = summarize_by_threshold(valid_records, threshold)
+        score = (
+            float(summary["balanced_accuracy"]),
+            float(summary["accuracy_valid"]),
+            int(summary["tp"]) - int(summary["fp"]),
+        )
+        if best_result is None or score > best_result[0]:
+            best_result = (score, summary)
+
+    assert best_result is not None
+    selected = dict(best_result[1])
+    selected["average_current_threshold"] = average(
+        record.decision_threshold for record in valid_records
+    )
+    selected["valid_count"] = len(valid_records)
+    return selected
+
+
+def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
+    total = len(records)
+    if total == 0:
+        return {
+            "total_records": 0,
+            "reasoning_type_coverage": 0.0,
+            "diagnostic_chain_coverage": 0.0,
+            "needs_review_rate": 0.0,
+            "risk_level_distribution": {},
+            "reasoning_type_distribution": {},
+            "avg_diagnostic_chain_len": 0.0,
+        }
+
+    reasoning_type_count: Dict[str, int] = {}
+    risk_level_count: Dict[str, int] = {}
+    non_empty_reasoning = 0
+    has_chain = 0
+    needs_review_count = 0
+    chain_len_sum = 0
+
+    for record in records:
+        if record.reasoning_type:
+            non_empty_reasoning += 1
+            reasoning_type_count[record.reasoning_type] = reasoning_type_count.get(record.reasoning_type, 0) + 1
+        if record.risk_level:
+            risk_level_count[record.risk_level] = risk_level_count.get(record.risk_level, 0) + 1
+        if record.needs_review:
+            needs_review_count += 1
+        if record.diagnostic_chain_len > 0:
+            has_chain += 1
+        chain_len_sum += int(record.diagnostic_chain_len)
+
+    return {
+        "total_records": total,
+        "reasoning_type_coverage": safe_div(non_empty_reasoning, total),
+        "diagnostic_chain_coverage": safe_div(has_chain, total),
+        "needs_review_rate": safe_div(needs_review_count, total),
+        "risk_level_distribution": dict(sorted(risk_level_count.items())),
+        "reasoning_type_distribution": dict(sorted(reasoning_type_count.items())),
+        "avg_diagnostic_chain_len": safe_div(chain_len_sum, total),
+    }
 
 
 def safe_div(numerator: float, denominator: float) -> float:
@@ -814,6 +1013,17 @@ def write_csv(records: List[PredictionRecord], target: Path) -> None:
                 "confidence",
                 "is_correct",
                 "latency_ms",
+                "decision_fake_score",
+                "decision_threshold",
+                "decision_margin",
+                "score_source",
+                "threshold_source",
+                "decision_profile",
+                "reasoning_type",
+                "risk_level",
+                "needs_review",
+                "review_reasons_count",
+                "diagnostic_chain_len",
                 "error",
             ],
         )
@@ -822,9 +1032,17 @@ def write_csv(records: List[PredictionRecord], target: Path) -> None:
             writer.writerow(asdict(record))
 
 
-def write_json(summary: BenchmarkSummary, records: List[PredictionRecord], target: Path) -> None:
+def write_json(
+    summary: BenchmarkSummary,
+    records: List[PredictionRecord],
+    target: Path,
+    calibration: Optional[Dict[str, float | int]],
+    audit_summary: Dict[str, object],
+) -> None:
     payload = {
         "summary": asdict(summary),
+        "threshold_calibration": calibration,
+        "audit_summary": audit_summary,
         "records": [asdict(record) for record in records],
     }
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -891,6 +1109,17 @@ def parse_args() -> argparse.Namespace:
         default=1,
         help="Number of benchmark worker threads. Default keeps sequential behavior.",
     )
+    parser.add_argument(
+        "--decision-profile",
+        default=None,
+        help="Optional domain profile name forwarded to /detect for threshold calibration (e.g. celeb_df, dfdc).",
+    )
+    parser.add_argument(
+        "--decision-threshold-override",
+        type=float,
+        default=None,
+        help="Optional explicit decision threshold override in [0,1]. Takes precedence over profile.",
+    )
     return parser.parse_args()
 
 
@@ -902,6 +1131,8 @@ def make_client(args: argparse.Namespace) -> DetectClient:
 
 def main() -> None:
     args = parse_args()
+    if args.decision_threshold_override is not None and not 0.0 <= args.decision_threshold_override <= 1.0:
+        raise ValueError("--decision-threshold-override must be between 0 and 1")
     dataset_root = resolve_project_path(args.dataset_root)
     output_dir = resolve_project_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -919,10 +1150,14 @@ def main() -> None:
     runner = DetectBenchmarkRunner(
         client=client,
         semantic_threshold=args.semantic_threshold,
+        decision_profile=args.decision_profile,
+        decision_threshold_override=args.decision_threshold_override,
         workers=args.workers,
     )
     records = runner.run(samples)
     summary = compute_summary(records)
+    calibration = find_recommended_threshold(records)
+    audit_summary = compute_audit_summary(records)
 
     html_report = render_html_report(
         dataset_root=dataset_root,
@@ -937,7 +1172,7 @@ def main() -> None:
 
     html_path.write_text(html_report, encoding="utf-8")
     write_csv(records, csv_path)
-    write_json(summary, records, json_path)
+    write_json(summary, records, json_path, calibration, audit_summary)
 
     print(f"[CREATE] report written: {html_path}")
     print(f"[CREATE] csv written: {csv_path}")
@@ -947,6 +1182,19 @@ def main() -> None:
         f"accuracy_all={format_percent(summary.accuracy_all)}, "
         f"valid_coverage={format_percent(safe_div(summary.valid_predictions, summary.total_samples))}, "
         f"errors={summary.error_count}"
+    )
+    if calibration:
+        print(
+            "[RELOAD] threshold calibration: "
+            f"recommended={calibration['threshold']:.2f}, "
+            f"balanced_acc={format_percent(float(calibration['balanced_accuracy']))}, "
+            f"accuracy_valid={format_percent(float(calibration['accuracy_valid']))}"
+        )
+    print(
+        "[RELOAD] audit coverage: "
+        f"reasoning_type={format_percent(float(audit_summary['reasoning_type_coverage']))}, "
+        f"diagnostic_chain={format_percent(float(audit_summary['diagnostic_chain_coverage']))}, "
+        f"needs_review={format_percent(float(audit_summary['needs_review_rate']))}"
     )
 
 
