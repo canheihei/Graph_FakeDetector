@@ -129,70 +129,73 @@
                             </div>
                         </div>
 
-                        <div id="candidateSection" class="hidden">
-                            <h4 class="flex items-center text-md font-semibold text-gray-800 mb-3">
-                                <svg class="w-5 h-5 mr-2 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3 0 1.306.835 2.417 2 2.83V17a1 1 0 102 0v-3.17A3.001 3.001 0 0012 8zm0 0V5m0 12h.01M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M19 12h-3M8 12H5m10.364-6.364l-2.121 2.121M7.757 16.243l-2.121 2.121"></path>
-                                </svg>
-                                弱证据候选审批
-                            </h4>
-                            <div class="bg-rose-50 border border-rose-200 p-4 rounded-lg">
-                                <p class="text-sm text-rose-700 mb-3">
-                                    当前样本被判为伪造，但图谱证据较弱。可手动调用 LLM 生成候选图谱节点与候选映射，并直接在当前 detect 页面完成编辑、评测和晋级。
-                                </p>
-                                <div class="flex flex-wrap items-center gap-3 mb-4">
-                                    <button id="generateCandidateBtn" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium">
-                                        生成候选
-                                    </button>
-                                    <button id="refreshCandidateBtn" class="px-4 py-2 bg-white text-rose-700 border border-rose-300 rounded-lg hover:bg-rose-100 transition-colors text-sm font-medium">
-                                        刷新候选
-                                    </button>
-                                    <button id="selectAllCandidateBtn" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
-                                        全选
-                                    </button>
-                                    <button id="clearCandidateBtn" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
-                                        清空
-                                    </button>
-                                    <button id="saveCandidateBtn" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-                                        保存选中
-                                    </button>
-                                    <button id="quickBenchmarkBtn" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
-                                        快速评测
-                                    </button>
-                                    <button id="formalBenchmarkBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
-                                        正式评测
-                                    </button>
-                                    <button id="promoteCandidateBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
-                                        晋级
-                                    </button>
-                                </div>
-                                <div id="candidateProgressBox" class="hidden mb-4 p-3 bg-white border border-rose-200 rounded-lg">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span id="candidateProgressLabel" class="text-sm font-medium text-rose-700">处理中</span>
-                                        <span id="candidateProgressPercent" class="text-xs text-rose-600">0%</span>
-                                    </div>
-                                    <div class="w-full h-2 bg-rose-100 rounded-full overflow-hidden">
-                                        <div id="candidateProgressBar" class="h-full bg-rose-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-                                <div id="candidateReviewStatus" class="mb-3 text-sm text-rose-700"></div>
-                                <div id="candidateList" class="space-y-4"></div>
-                                <div class="flex flex-wrap items-center gap-3 mt-4">
-                                    <span id="candidateStatusText" class="text-sm text-rose-700"></span>
-                                </div>
-                            </div>
-                        </div>
-
                          <div>
                              <h4 class="flex items-center text-md font-semibold text-gray-800 mb-3">
                                 <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                                 完整推理证据链
                             </h4>
-                            <div id="evidenceChainBox" class="text-sm text-gray-700 bg-gray-50 border border-gray-200 p-4 rounded-lg font-mono overflow-x-auto">
+                            <div id="evidenceChainBox" class="space-y-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 p-4 rounded-lg">
                             </div>
                         </div>
                     </div>
                 </div> </div>
+        </section>
+
+        <section id="candidateSection" class="bg-white shadow-xl rounded-xl overflow-hidden transition-all duration-300 hover:shadow-2xl fade-in-up delay-100">
+            <div class="p-8">
+                <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="flex items-center justify-center w-8 h-8 bg-rose-100 text-rose-600 rounded-full mr-3">2</span>
+                    弱证据候选审批
+                </h2>
+                <div class="bg-rose-50 border border-rose-200 p-4 rounded-lg">
+                    <p class="text-sm text-rose-700 mb-3">
+                        候选审批区默认展示。上传图片完成 detect 后，系统会自动刷新候选列表并将当前样本相关候选置顶；只有当前 detect 结果满足弱证据条件时，才允许生成新候选。
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3 mb-4">
+                        <button id="generateCandidateBtn" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium">
+                            生成候选
+                        </button>
+                        <button id="refreshCandidateBtn" class="px-4 py-2 bg-white text-rose-700 border border-rose-300 rounded-lg hover:bg-rose-100 transition-colors text-sm font-medium">
+                            刷新候选
+                        </button>
+                        <button id="selectAllCandidateBtn" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
+                            全选
+                        </button>
+                        <button id="clearCandidateBtn" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
+                            清空
+                        </button>
+                        <button id="saveCandidateBtn" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+                            保存选中
+                        </button>
+                        <button id="quickBenchmarkBtn" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
+                            快速评测
+                        </button>
+                        <button id="formalBenchmarkBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
+                            正式评测
+                        </button>
+                        <button id="promoteCandidateBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                            晋级
+                        </button>
+                        <button id="deleteCandidateBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
+                            删除
+                        </button>
+                    </div>
+                    <div id="candidateProgressBox" class="hidden mb-4 p-3 bg-white border border-rose-200 rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="candidateProgressLabel" class="text-sm font-medium text-rose-700">处理中</span>
+                            <span id="candidateProgressPercent" class="text-xs text-rose-600">0%</span>
+                        </div>
+                        <div class="w-full h-2 bg-rose-100 rounded-full overflow-hidden">
+                            <div id="candidateProgressBar" class="h-full bg-rose-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div id="candidateReviewStatus" class="mb-3 text-sm text-rose-700"></div>
+                    <div id="candidateList" class="space-y-4"></div>
+                    <div class="flex flex-wrap items-center gap-3 mt-4">
+                        <span id="candidateStatusText" class="text-sm text-rose-700"></span>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <div class="text-center fade-in-up delay-200">
@@ -206,6 +209,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.fade-in-up').forEach(el => el.classList.add('show'));
+    const generateCandidateBtn = document.getElementById('generateCandidateBtn');
+    generateCandidateBtn.disabled = true;
+    generateCandidateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    setCandidateStatus('可先处理已有候选；上传图片并完成 detect 后，可生成当前样本的弱证据候选。');
+    loadCandidateMappings();
 });
 
 const fileInput = document.getElementById("imageFile");
@@ -349,18 +357,61 @@ function groupCandidateRows(items) {
     return Array.from(groups.values());
 }
 
-function getPreferredCandidateId(group) {
+function getGroupState(group) {
+    if (group.items.some(item => item.status === 'promoted')) {
+        return 'promoted';
+    }
+    if (group.items.some(item => item.status === 'benchmarked')) {
+        return 'benchmarked';
+    }
+    return 'pending';
+}
+
+function getGroupStatusText(group) {
+    const state = getGroupState(group);
+    if (state === 'promoted') {
+        return '已晋级';
+    }
+    if (state === 'benchmarked') {
+        const eligible = group.items.some(item => ((item.promotion || {}).eligible));
+        return eligible ? '已评测，可晋级' : '已评测';
+    }
+    return '待处理';
+}
+
+function splitCandidateGroups(items) {
+    const groups = groupCandidateRows(items);
+    return {
+        current: groups.filter(group => {
+            const sampleMatched = (group.sampleName || '') === window.currentDetectFileName && window.currentDetectFileName;
+            return Boolean(sampleMatched) && getGroupState(group) === 'pending';
+        }),
+        pending: groups.filter(group => {
+            const sampleMatched = (group.sampleName || '') === window.currentDetectFileName && window.currentDetectFileName;
+            return !sampleMatched && getGroupState(group) === 'pending';
+        }),
+        benchmarked: groups.filter(group => getGroupState(group) === 'benchmarked'),
+        promoted: groups.filter(group => getGroupState(group) === 'promoted'),
+    };
+}
+
+function getSelectedCandidateId(group) {
     const current = window.candidateSelectionByGroup[group.id];
     if (current && group.items.some(item => item.candidate_id === current)) {
         return current;
     }
-    const preferred =
-        group.items.find(item => item.status === 'promoted') ||
-        group.items.find(item => item.approval_state === 'approved') ||
-        group.items.find(item => ((item.benchmarks || {}).formal || {}).passed) ||
-        group.items.find(item => ((item.benchmarks || {}).quick || {}).passed) ||
-        group.items[0];
-    return preferred ? preferred.candidate_id : '';
+    return '';
+}
+
+function isCandidateSelectable(group, item) {
+    const state = getGroupState(group);
+    if (state === 'promoted') {
+        return false;
+    }
+    if (state === 'benchmarked') {
+        return Boolean((item.promotion || {}).eligible);
+    }
+    return true;
 }
 
 function selectCandidateOption(groupId, candidateId) {
@@ -369,8 +420,9 @@ function selectCandidateOption(groupId, candidateId) {
 
 function renderCandidateRows(items) {
     const listEl = document.getElementById('candidateList');
-    const groups = groupCandidateRows(items);
-    if (groups.length === 0) {
+    const sections = splitCandidateGroups(items);
+    const total = sections.current.length + sections.pending.length + sections.benchmarked.length + sections.promoted.length;
+    if (total === 0) {
         listEl.innerHTML = `
             <div class="p-4 border border-dashed border-rose-300 rounded-lg text-center text-gray-500 bg-white">
                 当前没有可审批候选。先在弱证据伪造样本上点击“生成候选”。
@@ -379,65 +431,92 @@ function renderCandidateRows(items) {
         return;
     }
 
-    listEl.innerHTML = groups.map(group => {
-        const selectedId = getPreferredCandidateId(group);
+    function renderSection(title, groups, toneClass) {
+        if (groups.length === 0) {
+            return '';
+        }
         return `
-            <div class="candidate-group border border-rose-200 rounded-xl p-4 bg-white" data-group-id="${escapeHtml(group.id)}">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                    <div>
-                        <h5 class="text-sm font-semibold text-gray-900">${escapeHtml(group.detector)}:${escapeHtml(group.feature)}</h5>
-                        <p class="text-xs text-gray-500">样本：${escapeHtml(group.sampleName || 'unknown')} | 候选数：${group.items.length}</p>
-                    </div>
-                    <span class="text-xs px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700">组内单选</span>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h5 class="text-sm font-semibold ${toneClass}">${title}</h5>
+                    <span class="text-xs text-gray-500">${groups.length} 组</span>
                 </div>
-                <div class="space-y-3">
-                    ${group.items.map(item => {
-                        const graph = item.graph_candidate || {};
-                        const mapping = item.mapping_candidate || {};
-                        const llm = item.llm || {};
-                        const benchmarks = item.benchmarks || {};
-                        const itemId = escapeHtml(item.candidate_id);
-                        const checked = item.candidate_id === selectedId ? 'checked' : '';
-                        const quick = benchmarks.quick ? (benchmarks.quick.passed ? '通过' : '未通过') : '未运行';
-                        const formal = benchmarks.formal ? (benchmarks.formal.passed ? '通过' : '未通过') : '未运行';
-                        return `
-                            <label class="block border border-gray-200 rounded-lg p-3 bg-gray-50">
-                                <div class="flex items-start gap-3">
-                                    <input type="radio"
-                                           class="candidate-choice mt-1 h-4 w-4 text-rose-600"
-                                           name="candidate_group_${escapeHtml(group.id)}"
-                                           value="${itemId}"
-                                           data-group-id="${escapeHtml(group.id)}"
-                                           ${checked}
-                                           onchange="selectCandidateOption('${escapeHtml(group.id)}', '${itemId}')">
-                                    <div class="flex-1 space-y-3">
-                                        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                                            <span>LLM rank: ${escapeHtml(llm.rank ?? '')}</span>
-                                            <span>status: ${escapeHtml(item.status || 'pending')}</span>
-                                            <span>Quick: ${quick}</span>
-                                            <span>Formal: ${formal}</span>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <input id="specific_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.specific_domain || '')}" placeholder="SpecificDomain">
-                                            <input id="subdomain_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.subdomain_name || '')}" placeholder="SubDomain">
-                                            <input id="canonical_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.canonical_name || '')}" placeholder="canonical_name">
-                                            <input id="weight_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.weight ?? 0.7)}" placeholder="weight">
-                                            <input id="threshold_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.activation_threshold ?? 0.58)}" placeholder="activation_threshold">
-                                            <input id="context_detector_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(mapping.context_detector || '')}" placeholder="context_detector">
-                                            <input id="context_feature_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(mapping.context_feature || '')}" placeholder="context_feature">
-                                            <input id="context_min_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.context_min_value ?? 0)}" placeholder="context_min_value">
-                                        </div>
-                                        <textarea id="describe_${itemId}" class="w-full p-2 border rounded text-sm" rows="2" placeholder="describe">${escapeHtml(graph.describe || '')}</textarea>
-                                        <p class="text-xs text-gray-600">${escapeHtml(llm.mapping_rationale || llm.feature_rationale || '')}</p>
-                                    </div>
+                ${groups.map(group => {
+                    const selectedId = getSelectedCandidateId(group);
+                    const state = getGroupState(group);
+                    return `
+                        <div class="candidate-group border border-rose-200 rounded-xl p-4 bg-white" data-group-id="${escapeHtml(group.id)}" data-group-state="${state}">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                                <div>
+                                    <h5 class="text-sm font-semibold text-gray-900">${escapeHtml(group.detector)}:${escapeHtml(group.feature)}</h5>
+                                    <p class="text-xs text-gray-500">样本：${escapeHtml(group.sampleName || 'unknown')} | 候选数：${group.items.length}</p>
                                 </div>
-                            </label>
-                        `;
-                    }).join('')}
-                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700">${getGroupStatusText(group)}</span>
+                            </div>
+                            <div class="space-y-3">
+                                ${group.items.map(item => {
+                                    const graph = item.graph_candidate || {};
+                                    const mapping = item.mapping_candidate || {};
+                                    const llm = item.llm || {};
+                                    const benchmarks = item.benchmarks || {};
+                                    const itemId = escapeHtml(item.candidate_id);
+                                    const checked = item.candidate_id === selectedId ? 'checked' : '';
+                                    const selectable = isCandidateSelectable(group, item);
+                                    const disabled = selectable ? '' : 'disabled';
+                                    const readonly = state === 'pending' ? '' : 'disabled';
+                                    const quick = benchmarks.quick ? (benchmarks.quick.passed ? '通过' : '未通过') : '未运行';
+                                    const formal = benchmarks.formal ? (benchmarks.formal.passed ? '通过' : '未通过') : '未运行';
+                                    const eligible = (item.promotion || {}).eligible ? '可晋级' : '不可晋级';
+                                    return `
+                                        <label class="block border border-gray-200 rounded-lg p-3 ${selectable ? 'bg-gray-50' : 'bg-gray-100'}">
+                                            <div class="flex items-start gap-3">
+                                                <input type="radio"
+                                                       class="candidate-choice mt-1 h-4 w-4 text-rose-600"
+                                                       name="candidate_group_${escapeHtml(group.id)}"
+                                                       value="${itemId}"
+                                                       data-group-id="${escapeHtml(group.id)}"
+                                                       ${checked}
+                                                       ${disabled}
+                                                       onchange="selectCandidateOption('${escapeHtml(group.id)}', '${itemId}')">
+                                                <div class="flex-1 space-y-3">
+                                                    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                                        <span>LLM rank: ${escapeHtml(llm.rank ?? '')}</span>
+                                                        <span>status: ${escapeHtml(item.status || 'pending')}</span>
+                                                        <span>Quick: ${quick}</span>
+                                                        <span>Formal: ${formal}</span>
+                                                        <span>${eligible}</span>
+                                                    </div>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <input id="specific_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.specific_domain || '')}" placeholder="SpecificDomain" ${readonly}>
+                                                        <input id="subdomain_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.subdomain_name || '')}" placeholder="SubDomain" ${readonly}>
+                                                        <input id="canonical_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.canonical_name || '')}" placeholder="canonical_name" ${readonly}>
+                                                        <input id="weight_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.weight ?? 0.7)}" placeholder="weight" ${readonly}>
+                                                        <input id="threshold_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.activation_threshold ?? 0.58)}" placeholder="activation_threshold" ${readonly}>
+                                                        <input id="context_detector_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(mapping.context_detector || '')}" placeholder="context_detector" ${readonly}>
+                                                        <input id="context_feature_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(mapping.context_feature || '')}" placeholder="context_feature" ${readonly}>
+                                                        <input id="context_min_${itemId}" class="candidate-input p-2 border rounded text-sm" type="number" step="0.01" min="0" max="1" value="${escapeHtml(mapping.context_min_value ?? 0)}" placeholder="context_min_value" ${readonly}>
+                                                    </div>
+                                                    <textarea id="describe_${itemId}" class="w-full p-2 border rounded text-sm" rows="2" placeholder="describe" ${readonly}>${escapeHtml(graph.describe || '')}</textarea>
+                                                    <p class="text-xs text-gray-600">${escapeHtml(llm.mapping_rationale || llm.feature_rationale || '')}</p>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
         `;
-    }).join('');
+    }
+
+    listEl.innerHTML = [
+        renderSection('当前检测样本', sections.current, 'text-indigo-700'),
+        renderSection('待处理', sections.pending, 'text-rose-700'),
+        renderSection('已评测', sections.benchmarked, 'text-amber-700'),
+        renderSection('已晋级', sections.promoted, 'text-green-700'),
+    ].filter(Boolean).join('<div class="h-4"></div>');
 }
 
 async function loadCandidateMappings() {
@@ -448,6 +527,7 @@ async function loadCandidateMappings() {
             throw new Error(payload.error || '候选加载失败');
         }
         window.candidateRows = payload.items || [];
+        window.candidateSelectionByGroup = {};
         renderCandidateRows(window.candidateRows);
         setCandidateStatus(`已加载 ${window.candidateRows.length} 条候选。`);
     } catch (err) {
@@ -460,14 +540,18 @@ function getSelectedCandidateIds() {
 }
 
 function selectAllCandidates() {
-    const groups = groupCandidateRows(window.candidateRows);
+    const groups = groupCandidateRows(window.candidateRows).filter(group => getGroupState(group) === 'pending');
+    window.candidateSelectionByGroup = {};
     groups.forEach(group => {
-        const preferredId = getPreferredCandidateId(group);
-        const input = document.querySelector(`.candidate-choice[data-group-id="${CSS.escape(group.id)}"][value="${CSS.escape(preferredId)}"]`);
+        const preferred = group.items[0];
+        if (!preferred) {
+            return;
+        }
+        const input = document.querySelector(`.candidate-choice[data-group-id="${CSS.escape(group.id)}"][value="${CSS.escape(preferred.candidate_id)}"]`);
         if (input) {
             input.checked = true;
-            window.candidateSelectionByGroup[group.id] = preferredId;
         }
+        window.candidateSelectionByGroup[group.id] = preferred.candidate_id;
     });
     setCandidateStatus(`已按组选择 ${groups.length} 条候选。`);
 }
@@ -483,8 +567,7 @@ function clearCandidateSelections() {
 function buildCandidatePatch(candidateId) {
     return {
         candidate_id: candidateId,
-        approval_state: 'approved',
-        status: 'approved',
+        approval_state: 'edited',
         graph_candidate: {
             specific_domain: document.getElementById(`specific_${candidateId}`).value,
             subdomain_name: document.getElementById(`subdomain_${candidateId}`).value,
@@ -511,6 +594,12 @@ async function saveSelectedCandidateEdits(options = {}) {
     }
     if (!options.fromOperation) {
         startCandidateOperation('正在保存选中候选...');
+    }
+    const selectedItems = ids.map(id => window.candidateRows.find(item => item.candidate_id === id)).filter(Boolean);
+    if (selectedItems.some(item => item.status !== 'pending')) {
+        finishCandidateOperation('保存失败', true);
+        setCandidateStatus('只有待处理候选可以编辑保存。', true);
+        return false;
     }
     for (const id of ids) {
         const resp = await fetch('/candidate-mappings/update', {
@@ -540,6 +629,12 @@ async function runCandidateBenchmark(mode) {
         return;
     }
     startCandidateOperation('正在保存候选...');
+    const selectedItems = ids.map(id => window.candidateRows.find(item => item.candidate_id === id)).filter(Boolean);
+    if (selectedItems.some(item => item.status !== 'pending')) {
+        finishCandidateOperation('评测失败', true);
+        setCandidateStatus('只有待处理候选可以评测。', true);
+        return;
+    }
     const saved = await saveSelectedCandidateEdits({fromOperation: true, silent: true});
     if (!saved) {
         return;
@@ -576,9 +671,11 @@ async function promoteSelectedCandidates() {
         alert('请先按组选择候选');
         return;
     }
-    startCandidateOperation('正在保存候选...');
-    const saved = await saveSelectedCandidateEdits({fromOperation: true, silent: true});
-    if (!saved) {
+    startCandidateOperation('正在准备晋级...');
+    const selectedItems = ids.map(id => window.candidateRows.find(item => item.candidate_id === id)).filter(Boolean);
+    if (selectedItems.some(item => item.status !== 'benchmarked')) {
+        finishCandidateOperation('晋级失败', true);
+        setCandidateStatus('只有已评测候选才能晋级。', true);
         return;
     }
     updateCandidateOperationLabel('正在晋级候选到 active mapping...');
@@ -594,10 +691,57 @@ async function promoteSelectedCandidates() {
         }
         await loadCandidateMappings();
         finishCandidateOperation('晋级完成');
-        setCandidateStatus(`已晋级 ${payload.promoted_count || 0} 条候选。`);
+        const logs = payload.logs || [];
+        console.log('promote logs:', logs);
+        if (logs.length > 0) {
+            const first = logs[0];
+            setCandidateStatus(`已晋级 ${payload.promoted_count || 0} 条候选。首条映射 ${first.mapping_key} -> ${first.active_graph.subdomain_name} (${first.active_graph.subdomain_id})`);
+        } else {
+            setCandidateStatus(`已晋级 ${payload.promoted_count || 0} 条候选。`);
+        }
     } catch (err) {
         finishCandidateOperation('晋级失败', true);
         setCandidateStatus('晋级失败：' + err.message, true);
+    }
+}
+
+async function deleteSelectedCandidates() {
+    const selectedIds = getSelectedCandidateIds();
+    if (selectedIds.length === 0) {
+        alert('请先按组选择候选');
+        return;
+    }
+    const groups = groupCandidateRows(window.candidateRows);
+    const deleteIds = [];
+    for (const selectedId of selectedIds) {
+        const group = groups.find(item => item.items.some(candidate => candidate.candidate_id === selectedId));
+        if (!group) {
+            continue;
+        }
+        for (const item of group.items) {
+            deleteIds.push(item.candidate_id);
+        }
+    }
+    if (!confirm(`将删除 ${deleteIds.length} 条候选记录，对应 ${selectedIds.length} 个候选组，是否继续？`)) {
+        return;
+    }
+    startCandidateOperation('正在删除候选...');
+    try {
+        const resp = await fetch('/candidate-mappings/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({candidate_ids: deleteIds}),
+        });
+        const payload = await resp.json();
+        if (!resp.ok) {
+            throw new Error(payload.error || '删除失败');
+        }
+        await loadCandidateMappings();
+        finishCandidateOperation('删除完成');
+        setCandidateStatus(`已删除 ${payload.deleted_count || 0} 条候选。`);
+    } catch (err) {
+        finishCandidateOperation('删除失败', true);
+        setCandidateStatus('删除失败：' + err.message, true);
     }
 }
 
@@ -691,8 +835,41 @@ fileInput.addEventListener("change", async function (event) {
     reasoningList.innerHTML = data.reasoning.explanations.map(exp => `<li class="flex items-start"><svg class="h-4 w-4 text-indigo-400 mt-1 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>${exp}</span></li>`).join('');
 
     const evidenceChainBox = document.getElementById('evidenceChainBox');
-    // 用箭头连接证据链，看起来更像一个图谱路径
-    evidenceChainBox.innerHTML = data.reasoning.evidence_chain.join(' <span class="text-indigo-400 mx-2">→</span> ');
+    if (Array.isArray(data.evidence) && data.evidence.length > 0) {
+        evidenceChainBox.innerHTML = data.evidence.map((item, index) => {
+            const subName = item?.sub_domain?.name || item?.subdomain_name || item?.subdomain || '未知子域';
+            const specificName = item?.specific_domain?.name || item?.specific_domain_name || item?.domain_name || '未知专域';
+            const mainName = item?.main_domain?.name || item?.main_domain_name || '未知主域';
+            return `
+                <div class="rounded-lg border border-indigo-100 bg-white p-3 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">证据 ${index + 1}</span>
+                        <span class="text-xs text-gray-500">${subName}</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-800">
+                        <span class="px-2 py-1 rounded bg-indigo-50 text-indigo-700">${subName}</span>
+                        <span class="text-indigo-400">→</span>
+                        <span class="px-2 py-1 rounded bg-gray-100 text-gray-700">${specificName}</span>
+                        <span class="text-indigo-400">→</span>
+                        <span class="px-2 py-1 rounded bg-emerald-50 text-emerald-700">${mainName}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else if (Array.isArray(data.reasoning?.evidence_chain) && data.reasoning.evidence_chain.length > 0) {
+        evidenceChainBox.innerHTML = data.reasoning.evidence_chain.map((chain, index) => `
+            <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                <div class="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-2">证据 ${index + 1}</div>
+                <div class="text-sm text-gray-700">${chain}</div>
+            </div>
+        `).join('');
+    } else {
+        evidenceChainBox.innerHTML = `
+            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-4 text-gray-500">
+                当前样本没有可展示的图谱证据链。
+            </div>
+        `;
+    }
 
     // 5. 显示 FFT 频谱图
     const fftVisualization = document.getElementById('fftVisualization');
@@ -863,7 +1040,7 @@ document.getElementById('generateCandidateBtn').addEventListener('click', async 
         const count = Number(result.count || 0);
         await loadCandidateMappings();
         finishCandidateOperation('候选生成完成');
-        statusText.textContent = `已生成 ${count} 条候选，可直接在当前页面审批。`;
+        statusText.textContent = `已生成 ${count} 条候选，并已置顶到“当前检测样本”分组。`;
     } catch (e) {
         finishCandidateOperation('候选生成失败', true);
         statusText.textContent = '';
@@ -897,6 +1074,10 @@ document.getElementById('formalBenchmarkBtn').addEventListener('click', async ()
 
 document.getElementById('promoteCandidateBtn').addEventListener('click', async () => {
     await promoteSelectedCandidates();
+});
+
+document.getElementById('deleteCandidateBtn').addEventListener('click', async () => {
+    await deleteSelectedCandidates();
 });
 </script>
 

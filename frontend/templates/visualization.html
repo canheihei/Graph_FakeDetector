@@ -63,7 +63,7 @@
                 </h1>
                 <p class="mt-2 text-gray-500 font-medium">实时监控知识图谱节点分布、关系拓扑及多维域结构。</p>
             </div>
-            <div class="mt-4 md:mt-0 flex space-x-3 text-sm font-mono">
+            <div class="mt-4 md:mt-0 flex flex-wrap items-center gap-3 text-sm font-mono">
                 <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full border border-green-200 flex items-center">
                     <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                     Database Connected
@@ -71,8 +71,22 @@
                 <span id="lastUpdated" class="px-3 py-1 bg-gray-200 text-gray-600 rounded-full border border-gray-300">
                     Last Update: Just now
                 </span>
+                <button id="resetBaselineBtn"
+                        class="px-3 py-1 bg-red-600 text-white rounded-full border border-red-700 hover:bg-red-700 transition-colors font-sans font-medium">
+                    重置为基线图谱
+                </button>
+                <button id="resetMappingBtn"
+                        class="px-3 py-1 bg-amber-600 text-white rounded-full border border-amber-700 hover:bg-amber-700 transition-colors font-sans font-medium">
+                    重置 active mapping
+                </button>
+                <button id="resetSystemBtn"
+                        class="px-3 py-1 bg-gray-800 text-white rounded-full border border-gray-900 hover:bg-black transition-colors font-sans font-medium">
+                    一键重置全部
+                </button>
             </div>
         </div>
+
+        <div id="resetStatus" class="fade-in-up delay-050 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
 
         <div id="overviewGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 fade-in-up delay-100">
             <div class="bg-indigo-600 rounded-xl p-5 text-white shadow-lg shadow-indigo-200 relative overflow-hidden">
@@ -154,6 +168,20 @@
                     <div class="h-8 w-24 skeleton rounded"></div>
                     <div class="h-8 w-24 skeleton rounded"></div>
                     <div class="h-8 w-24 skeleton rounded"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-3 fade-in-up delay-500">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-gray-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        Active Mapping 配置视图
+                    </h3>
+                    <span id="mappingSummary" class="text-xs font-mono text-gray-500">loading...</span>
+                </div>
+                <div id="mappingConfigView" class="space-y-4">
+                    <div class="h-4 w-full skeleton rounded"></div>
+                    <div class="h-4 w-3/4 skeleton rounded"></div>
                 </div>
             </div>
 
@@ -310,14 +338,55 @@ function renderSubdomainIndex(overview) {
   }
 }
 
+function renderMappingConfig(data) {
+  const target = document.getElementById('mappingConfigView');
+  const summary = document.getElementById('mappingSummary');
+  summary.textContent = `rules=${data.summary.rule_count} | detectors=${data.summary.detector_count} | nonbaseline=${data.summary.nonbaseline_rule_count}`;
+
+  const detectors = Object.entries(data.detectors || {}).sort((a, b) => a[0].localeCompare(b[0], 'en'));
+  target.innerHTML = detectors.map(([detector, rules]) => {
+    const rows = rules.map(rule => `
+      <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+          <div class="font-mono text-sm text-gray-800">${rule.feature}</div>
+          <div class="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+            <span class="px-2 py-0.5 rounded-full border ${rule.evidence_enabled ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-100 border-gray-200 text-gray-600'}">
+              ${rule.evidence_enabled ? 'evidence_on' : 'evidence_off'}
+            </span>
+            <span>weight=${Number(rule.weight || 0).toFixed(2)}</span>
+            <span>thr=${Number(rule.activation_threshold || 0).toFixed(2)}</span>
+          </div>
+        </div>
+        <div class="text-xs text-gray-600 leading-6 space-y-1">
+          <div><span class="font-semibold text-gray-700">SubDomain:</span> ${rule.subdomain_label || '-'}</div>
+          <div><span class="font-semibold text-gray-700">SubDomain ID:</span> <span class="font-mono">${rule.subdomain_id || '-'}</span></div>
+          <div><span class="font-semibold text-gray-700">Sigmoid:</span> k=${Number(rule.sigmoid_k || 0).toFixed(2)}, x0=${Number(rule.sigmoid_x0 || 0).toFixed(2)}</div>
+          <div><span class="font-semibold text-gray-700">Context:</span> ${rule.context_detector || '-'} / ${rule.context_feature || '-'} / min=${Number(rule.context_min_value || 0).toFixed(2)}</div>
+        </div>
+      </div>
+    `).join('');
+    return `
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold text-gray-900">${detector}</div>
+          <div class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">${rules.length} rules</div>
+        </div>
+        <div class="space-y-3">${rows}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 async function loadGraphStats() {
   try {
-    const [statsRes, overviewRes] = await Promise.all([
+    const [statsRes, overviewRes, mappingRes] = await Promise.all([
       fetch("/stats"),
-      fetch("/neo4j_overview")
+      fetch("/neo4j_overview"),
+      fetch("/mapping/config")
     ]);
     const data = await statsRes.json();
     const overview = await overviewRes.json();
+    const mapping = await mappingRes.json();
 
     document.getElementById("totalNodes").innerText = data.graph_overview.nodes.toLocaleString();
     document.getElementById("totalRelations").innerText = data.graph_overview.relations.toLocaleString();
@@ -328,6 +397,7 @@ async function loadGraphStats() {
     renderRelationStats(data);
     renderHierarchy(overview);
     renderSubdomainIndex(overview);
+    renderMappingConfig(mapping);
 
     document.querySelectorAll('.fade-in-up').forEach(el => el.classList.add('show'));
   } catch (e) {
@@ -339,6 +409,149 @@ async function loadGraphStats() {
 document.addEventListener('DOMContentLoaded', () => {
   loadGraphStats();
   document.getElementById('lastUpdated').innerText = `Last Update: ${new Date().toLocaleTimeString()}`;
+});
+
+function setResetStatus(message, isError = false) {
+  const el = document.getElementById('resetStatus');
+  el.classList.remove('hidden');
+  el.className = isError
+    ? 'fade-in-up delay-050 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 show'
+    : 'fade-in-up delay-050 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 show';
+  el.textContent = message;
+}
+
+async function resetBaselineGraph() {
+  const acknowledged = confirm(
+    '该操作会清空当前 Neo4j 图谱并按 cyper.md 重建基线结构。此操作不会修改 mapping_config.json。是否继续？'
+  );
+  if (!acknowledged) {
+    return;
+  }
+
+  const confirmation = prompt('请输入确认短语 RESET_BASELINE_GRAPH');
+  if (confirmation !== 'RESET_BASELINE_GRAPH') {
+    setResetStatus('确认短语不匹配，已取消重置。', true);
+    return;
+  }
+
+  const button = document.getElementById('resetBaselineBtn');
+  button.disabled = true;
+  button.classList.add('opacity-50', 'cursor-not-allowed');
+  setResetStatus('正在重置图谱为 cyper.md 基线，请稍候...', false);
+
+  try {
+    const resp = await fetch('/graph/reset_baseline', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({confirm: 'RESET_BASELINE_GRAPH'}),
+    });
+    const payload = await resp.json();
+    if (!resp.ok) {
+      throw new Error(payload.error || '重置失败');
+    }
+    setResetStatus(
+      `重置成功：before=${JSON.stringify(payload.before)} after=${JSON.stringify(payload.after)}`
+    );
+    await loadGraphStats();
+    document.getElementById('lastUpdated').innerText = `Last Update: ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    setResetStatus(`重置失败：${err.message}`, true);
+  } finally {
+    button.disabled = false;
+    button.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+}
+
+async function resetBaselineMapping() {
+  const acknowledged = confirm(
+    '该操作会将 alignment/mapping_config.json 恢复到 baseline 版本，并重新加载 active aligner。此操作不会修改 Neo4j 图谱。是否继续？'
+  );
+  if (!acknowledged) {
+    return;
+  }
+
+  const confirmation = prompt('请输入确认短语 RESET_BASELINE_MAPPING');
+  if (confirmation !== 'RESET_BASELINE_MAPPING') {
+    setResetStatus('确认短语不匹配，已取消重置 mapping。', true);
+    return;
+  }
+
+  const button = document.getElementById('resetMappingBtn');
+  button.disabled = true;
+  button.classList.add('opacity-50', 'cursor-not-allowed');
+  setResetStatus('正在重置 active mapping，请稍候...', false);
+
+  try {
+    const resp = await fetch('/mapping/reset_baseline', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({confirm: 'RESET_BASELINE_MAPPING'}),
+    });
+    const payload = await resp.json();
+    if (!resp.ok) {
+      throw new Error(payload.error || '重置 mapping 失败');
+    }
+    setResetStatus(
+      `mapping 重置成功：before_bytes=${payload.before_bytes}, after_bytes=${payload.after_bytes}`
+    );
+  } catch (err) {
+    setResetStatus(`重置 mapping 失败：${err.message}`, true);
+  } finally {
+    button.disabled = false;
+    button.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+}
+
+async function resetSystemBaseline() {
+  const acknowledged = confirm(
+    '该操作会同时重置 Neo4j 图谱与 active mapping，为高危操作。是否继续？'
+  );
+  if (!acknowledged) {
+    return;
+  }
+
+  const confirmation = prompt('请输入确认短语 RESET_GRAPH_AND_MAPPING');
+  if (confirmation !== 'RESET_GRAPH_AND_MAPPING') {
+    setResetStatus('确认短语不匹配，已取消系统重置。', true);
+    return;
+  }
+
+  const button = document.getElementById('resetSystemBtn');
+  button.disabled = true;
+  button.classList.add('opacity-50', 'cursor-not-allowed');
+  setResetStatus('正在重置图谱与 active mapping，请稍候...', false);
+
+  try {
+    const resp = await fetch('/system/reset_baseline', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({confirm: 'RESET_GRAPH_AND_MAPPING'}),
+    });
+    const payload = await resp.json();
+    if (!resp.ok) {
+      throw new Error(payload.error || '系统重置失败');
+    }
+    setResetStatus(
+      `系统重置成功：graph=${JSON.stringify(payload.graph.after)} mapping_bytes=${payload.mapping.after_bytes}`
+    );
+    await loadGraphStats();
+    document.getElementById('lastUpdated').innerText = `Last Update: ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    setResetStatus(`系统重置失败：${err.message}`, true);
+  } finally {
+    button.disabled = false;
+    button.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+}
+
+document.getElementById('resetBaselineBtn').addEventListener('click', () => {
+  resetBaselineGraph();
+});
+document.getElementById('resetMappingBtn').addEventListener('click', () => {
+  resetBaselineMapping();
+});
+document.getElementById('resetSystemBtn').addEventListener('click', () => {
+  resetSystemBaseline();
 });
 </script>
 

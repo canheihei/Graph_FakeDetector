@@ -400,6 +400,52 @@ class Neo4jClient:
             {"name": specific_domain_name},
         )
 
+    def find_subdomain_record(
+        self,
+        *,
+        specific_domain_name: str,
+        sub_id: str = "",
+        canonical_name: str = "",
+        sub_name: str = "",
+    ) -> Optional[Dict]:
+        records = self.list_subdomain_records(specific_domain_name)
+        if sub_id:
+            matched = next(
+                (item for item in records if str(item.get("sub_id", "")) == str(sub_id)),
+                None,
+            )
+            if matched is not None:
+                return matched
+
+        normalized_canonical = str(canonical_name or "").strip().lower()
+        if normalized_canonical:
+            matched = next(
+                (
+                    item for item in records
+                    if str(item.get("canonical_name", "") or "").strip().lower() == normalized_canonical
+                ),
+                None,
+            )
+            if matched is not None:
+                return matched
+
+        normalized_name = str(sub_name or "").strip()
+        if normalized_name:
+            matched = next(
+                (
+                    item for item in records
+                    if normalized_name in {
+                        str(item.get("name", "") or "").strip(),
+                        str(item.get("display_name", "") or "").strip(),
+                    }
+                ),
+                None,
+            )
+            if matched is not None:
+                return matched
+
+        return None
+
     def get_specific_domain_by_subdomain_name(self, sub_name: str) -> Optional[Dict]:
         result = self.query(
             """

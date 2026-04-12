@@ -28,6 +28,15 @@ class CandidateGraphStore:
             status=str(status or "").strip() or "pending",
         )
 
+    def delete_candidates(self, candidate_ids: Iterable[str]) -> None:
+        serialized = [str(item) for item in candidate_ids if str(item).strip()]
+        if not serialized:
+            return
+        self._neo4j_client.execute_write(
+            self._delete_candidates,
+            candidate_ids=serialized,
+        )
+
     @staticmethod
     def _write_candidates(tx, *, items):
         for item in items:
@@ -88,10 +97,37 @@ class CandidateGraphStore:
     def _update_candidate_status(tx, *, candidate_ids, status):
         tx.run(
             """
-            MATCH (sub:CandidateSubDomain)
+            MATCH (sub:CandidateSubDomain)-[:CANDIDATE_SPECIFIC_OF]->(s:CandidateSpecificDomain)-[:CANDIDATE_KINDS_OF]->(m:CandidateMainDomain)
             WHERE sub.candidate_id IN $candidate_ids
-            SET sub.status = $status
+            SET sub.status = $status,
+                s.status = $status,
+                m.status = $status
             """,
             candidate_ids=candidate_ids,
             status=status,
+        )
+
+    @staticmethod
+    def _delete_candidates(tx, *, candidate_ids):
+        tx.run(
+            """
+            MATCH (sub:CandidateSubDomain)
+            WHERE sub.candidate_id IN $candidate_ids
+            DETACH DELETE sub
+            """,
+            candidate_ids=candidate_ids,
+        )
+        tx.run(
+            """
+            MATCH (s:CandidateSpecificDomain)
+            WHERE NOT EXISTS { MATCH (:CandidateSubDomain)-[:CANDIDATE_SPECIFIC_OF]->(s) }
+            DETACH DELETE s
+            """
+        )
+        tx.run(
+            """
+            MATCH (m:CandidateMainDomain)
+            WHERE NOT EXISTS { MATCH (:CandidateSpecificDomain)-[:CANDIDATE_KINDS_OF]->(m) }
+            DETACH DELETE m
+            """
         )

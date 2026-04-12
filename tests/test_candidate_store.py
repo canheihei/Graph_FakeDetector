@@ -41,3 +41,19 @@ def test_candidate_store_updates_existing_item(tmp_path: Path):
 
     assert updated["status"] == "approved"
     assert store.get_item("c1")["status"] == "approved"
+
+
+def test_candidate_store_deletes_items(tmp_path: Path):
+    store = CandidateStore(tmp_path / "mapping_candidates.json")
+    store.append_items(
+        [
+            {"candidate_id": "c1", "status": "pending"},
+            {"candidate_id": "c2", "status": "pending"},
+        ]
+    )
+
+    deleted = store.delete_items(["c1"])
+
+    assert deleted == 1
+    assert store.get_item("c1") is None
+    assert store.get_item("c2") is not None

@@ -80,3 +80,46 @@ def compute_adaptive_fusion(
         "auxiliary_score": round(float(auxiliary), 6),
         "mode": "adaptive_fusion",
     }
+
+
+def compute_graph_coupling(
+    *,
+    primary_score: float,
+    decision_threshold: float,
+    graph_score: Optional[float],
+    evidence_count: int,
+    base_graph_weight: float,
+) -> dict:
+    primary = clamp01(float(primary_score))
+    if graph_score is None or int(evidence_count) <= 0:
+        return {
+            "coupled_score": round(float(primary), 6),
+            "influence_weight": 0.0,
+            "alignment_score": 0.0,
+            "boundary_factor": 0.0,
+        }
+
+    graph = clamp01(float(graph_score))
+    threshold = clamp01(float(decision_threshold))
+    agreement = 1.0 - abs(primary - graph)
+    activation_strength = clamp01(float(evidence_count) / 3.0)
+    alignment = clamp01(
+        0.55 * agreement
+        + 0.30 * graph
+        + 0.15 * activation_strength
+    )
+
+    margin = abs(primary - threshold)
+    boundary_factor = 1.0 - clamp01(margin / 0.20)
+    influence = clamp01(
+        clamp01(float(base_graph_weight))
+        * (0.45 + 0.55 * alignment)
+        * (0.35 + 0.65 * boundary_factor)
+    )
+    coupled = clamp01((1.0 - influence) * primary + influence * graph)
+    return {
+        "coupled_score": round(float(coupled), 6),
+        "influence_weight": round(float(influence), 6),
+        "alignment_score": round(float(alignment), 6),
+        "boundary_factor": round(float(boundary_factor), 6),
+    }

@@ -51,6 +51,11 @@ class PredictionRecord:
     needs_review: bool = False
     review_reasons_count: int = 0
     diagnostic_chain_len: int = 0
+    evidence_count: int = 0
+    evidence_requested: int = 0
+    evidence_unresolved: int = 0
+    evidence_alignment_score: float = 0.0
+    graph_influence_weight: float = 0.0
     error: str = ""
 
 
@@ -272,6 +277,17 @@ class DetectBenchmarkRunner:
             review_reasons_count = len(review_reasons) if isinstance(review_reasons, list) else 0
             diagnostic_chain = result.get("diagnostic_chain", [])
             diagnostic_chain_len = len(diagnostic_chain) if isinstance(diagnostic_chain, list) else 0
+            evidence = result.get("evidence", [])
+            evidence_count = len(evidence) if isinstance(evidence, list) else 0
+            evidence_diagnostics = result.get("evidence_diagnostics", {})
+            if isinstance(evidence_diagnostics, dict):
+                evidence_requested = int(evidence_diagnostics.get("requested_subdomains", 0) or 0)
+                evidence_unresolved = int(evidence_diagnostics.get("unresolved_subdomains", 0) or 0)
+            else:
+                evidence_requested = 0
+                evidence_unresolved = 0
+            evidence_alignment_score = coerce_float(result.get("evidence_alignment_score", 0.0))
+            graph_influence_weight = coerce_float(result.get("graph_influence_weight", 0.0))
             error_message = ""
         except Exception as exc:
             predicted_label = "ERROR"
@@ -287,6 +303,11 @@ class DetectBenchmarkRunner:
             needs_review = False
             review_reasons_count = 0
             diagnostic_chain_len = 0
+            evidence_count = 0
+            evidence_requested = 0
+            evidence_unresolved = 0
+            evidence_alignment_score = 0.0
+            graph_influence_weight = 0.0
             error_message = str(exc)
             print(f"[WARN] detect failed: {sample.path.name} -> {error_message}")
 
@@ -310,6 +331,11 @@ class DetectBenchmarkRunner:
             needs_review=needs_review,
             review_reasons_count=review_reasons_count,
             diagnostic_chain_len=diagnostic_chain_len,
+            evidence_count=evidence_count,
+            evidence_requested=evidence_requested,
+            evidence_unresolved=evidence_unresolved,
+            evidence_alignment_score=round(evidence_alignment_score, 6),
+            graph_influence_weight=round(graph_influence_weight, 6),
             error=error_message,
         )
 
@@ -555,6 +581,12 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
             "risk_level_distribution": {},
             "reasoning_type_distribution": {},
             "avg_diagnostic_chain_len": 0.0,
+            "evidence_hit_rate": 0.0,
+            "evidence_hit_rate_valid": 0.0,
+            "fake_evidence_hit_rate": 0.0,
+            "high_score_no_evidence_rate": 0.0,
+            "unresolved_subdomain_rate": 0.0,
+            "avg_evidence_alignment_score": 0.0,
         }
 
     reasoning_type_count: Dict[str, int] = {}
@@ -563,6 +595,15 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
     has_chain = 0
     needs_review_count = 0
     chain_len_sum = 0
+    evidence_hit_count = 0
+    valid_count = 0
+    valid_evidence_hit_count = 0
+    fake_total = 0
+    fake_evidence_hit_count = 0
+    high_score_no_evidence_count = 0
+    evidence_requested_sum = 0
+    evidence_unresolved_sum = 0
+    evidence_alignment_sum = 0.0
 
     for record in records:
         if record.reasoning_type:
@@ -575,6 +616,21 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
         if record.diagnostic_chain_len > 0:
             has_chain += 1
         chain_len_sum += int(record.diagnostic_chain_len)
+        if record.evidence_count > 0:
+            evidence_hit_count += 1
+        if record.predicted_label in VALID_LABELS:
+            valid_count += 1
+            if record.evidence_count > 0:
+                valid_evidence_hit_count += 1
+            if record.evidence_count <= 0 and record.decision_fake_score >= (record.decision_threshold + 0.08):
+                high_score_no_evidence_count += 1
+        if record.truth_label == "FAKE":
+            fake_total += 1
+            if record.evidence_count > 0:
+                fake_evidence_hit_count += 1
+        evidence_requested_sum += max(int(record.evidence_requested), 0)
+        evidence_unresolved_sum += max(int(record.evidence_unresolved), 0)
+        evidence_alignment_sum += max(min(float(record.evidence_alignment_score), 1.0), 0.0)
 
     return {
         "total_records": total,
@@ -584,6 +640,12 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
         "risk_level_distribution": dict(sorted(risk_level_count.items())),
         "reasoning_type_distribution": dict(sorted(reasoning_type_count.items())),
         "avg_diagnostic_chain_len": safe_div(chain_len_sum, total),
+        "evidence_hit_rate": safe_div(evidence_hit_count, total),
+        "evidence_hit_rate_valid": safe_div(valid_evidence_hit_count, valid_count),
+        "fake_evidence_hit_rate": safe_div(fake_evidence_hit_count, fake_total),
+        "high_score_no_evidence_rate": safe_div(high_score_no_evidence_count, valid_count),
+        "unresolved_subdomain_rate": safe_div(evidence_unresolved_sum, evidence_requested_sum),
+        "avg_evidence_alignment_score": safe_div(evidence_alignment_sum, total),
     }
 
 
@@ -1024,6 +1086,11 @@ def write_csv(records: List[PredictionRecord], target: Path) -> None:
                 "needs_review",
                 "review_reasons_count",
                 "diagnostic_chain_len",
+                "evidence_count",
+                "evidence_requested",
+                "evidence_unresolved",
+                "evidence_alignment_score",
+                "graph_influence_weight",
                 "error",
             ],
         )
@@ -1195,6 +1262,14 @@ def main() -> None:
         f"reasoning_type={format_percent(float(audit_summary['reasoning_type_coverage']))}, "
         f"diagnostic_chain={format_percent(float(audit_summary['diagnostic_chain_coverage']))}, "
         f"needs_review={format_percent(float(audit_summary['needs_review_rate']))}"
+    )
+    print(
+        "[RELOAD] evidence hit: "
+        f"overall={format_percent(float(audit_summary['evidence_hit_rate']))}, "
+        f"valid={format_percent(float(audit_summary['evidence_hit_rate_valid']))}, "
+        f"fake={format_percent(float(audit_summary['fake_evidence_hit_rate']))}, "
+        f"high_score_no_evidence={format_percent(float(audit_summary['high_score_no_evidence_rate']))}, "
+        f"unresolved={format_percent(float(audit_summary['unresolved_subdomain_rate']))}"
     )
 
 

@@ -73,3 +73,17 @@ class CandidateStore:
         updated = dict(item)
         updated.update(patch)
         return self.replace_item(candidate_id, updated)
+
+    def delete_items(self, candidate_ids: Iterable[str]) -> int:
+        targets = {str(item) for item in candidate_ids if str(item).strip()}
+        if not targets:
+            return 0
+        payload = self._read()
+        items = payload.setdefault("items", [])
+        before = len(items)
+        payload["items"] = [
+            item for item in items
+            if str(item.get("candidate_id")) not in targets
+        ]
+        self._write(payload)
+        return before - len(payload["items"])

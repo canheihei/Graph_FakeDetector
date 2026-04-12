@@ -336,7 +336,11 @@ JSON 字段:
 
 ### `POST /candidate-mappings/promote`
 
-将通过评测门禁的候选晋级到 `alignment/mapping_config.json`。当前 active mapping 仍保持单个 `detector + feature` 只能存在一条正式规则。
+将通过评测门禁的候选晋级到 `alignment/mapping_config.json`，并在 promote 时同步将 candidate graph 合并到 active graph。当前 active mapping 仍保持单个 `detector + feature` 只能存在一条正式规则；接口会返回 promote 日志，说明 rule 更新前后以及 active graph 合并结果。
+
+### `POST /candidate-mappings/delete`
+
+删除候选审批记录与对应 candidate graph 节点。当前前端策略为：已评测或已晋级候选不允许重复操作，如需重新走流程，需先删除再重新生成。
 
 ### `GET /stats`
 
@@ -345,6 +349,18 @@ JSON 字段:
 ### `GET /neo4j_overview`
 
 查询 Neo4j 图谱概览。
+
+### `POST /graph/reset_baseline`
+
+清空当前 Neo4j 图谱并按 `cyper.md` 中的基础 Cypher 重建基线图谱。该接口要求确认短语 `RESET_BASELINE_GRAPH`，且只重置 Neo4j 图谱，不修改 `mapping_config.json`。
+
+### `POST /mapping/reset_baseline`
+
+将 `alignment/mapping_config.json` 恢复到 `alignment/mapping_config.baseline.json`，并重新加载 active aligner。该接口要求确认短语 `RESET_BASELINE_MAPPING`，且不修改 Neo4j 图谱。
+
+### `POST /system/reset_baseline`
+
+同时重置 Neo4j 图谱与 `mapping_config.json`。该接口要求确认短语 `RESET_GRAPH_AND_MAPPING`，适合需要回到完整系统基线状态的场景。
 
 ### 报告相关接口
 

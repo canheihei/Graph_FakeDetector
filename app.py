@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+import re
+import shutil
 
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, url_for
 
@@ -13,6 +15,7 @@ from service.candidate_benchmark import CandidateBenchmarkRunner
 from service.candidate_graph import CandidateGraphStore
 from service.candidate_review import (
     CandidateBenchmarkRequest,
+    CandidateDeleteRequest,
     CandidatePromoteRequest,
     CandidateRequest,
     CandidateReviewFacade,
@@ -84,9 +87,18 @@ candidate_review_facade = CandidateReviewFacade(
         logger=app.logger,
         dataset_profile_roots=dict(get_candidate_review_config().dataset_profile_roots),
         active_mapping_path=APP_ROOT / "alignment" / "mapping_config.json",
+        graph_writer=graph_writer,
+        neo4j_client=neo4j_client,
     ),
     mapping_config_path=APP_ROOT / "alignment" / "mapping_config.json",
+    graph_writer=graph_writer,
+    neo4j_client=neo4j_client,
+    logger=app.logger,
+    aligner=aligner,
 )
+GRAPH_RESET_CONFIRM_TOKEN = "RESET_BASELINE_GRAPH"
+MAPPING_RESET_CONFIRM_TOKEN = "RESET_BASELINE_MAPPING"
+SYSTEM_RESET_CONFIRM_TOKEN = "RESET_GRAPH_AND_MAPPING"
 
 
 def _ok(payload, status=200):
@@ -172,6 +184,66 @@ def _build_report_gallery_payload():
         "reports": reports,
         "latest": latest_report,
         "overview": overview,
+    }
+
+
+def _load_baseline_graph_cypher() -> str:
+    cypher_doc = APP_ROOT / "cyper.md"
+    if not cypher_doc.exists():
+        raise FileNotFoundError(f"Baseline cypher file not found: {cypher_doc}")
+    text = cypher_doc.read_text(encoding="utf-8")
+    match = re.search(r"```cypher\s*(.*?)\s*```", text, flags=re.S)
+    if not match:
+        raise ValueError("No ```cypher``` block found in cyper.md")
+    return match.group(1).strip()
+
+
+def _load_mapping_config(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Mapping config not found: {path}")
+    return jsonify_or_json_loads(path.read_text(encoding="utf-8"))
+
+
+def jsonify_or_json_loads(text: str) -> dict:
+    import json
+
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError("mapping config payload must be a JSON object")
+    return data
+
+
+def _reset_mapping_config_to_baseline() -> dict:
+    mapping_path = APP_ROOT / "alignment" / "mapping_config.json"
+    baseline_path = APP_ROOT / "alignment" / "mapping_config.baseline.json"
+    if not baseline_path.exists():
+        raise FileNotFoundError(f"Baseline mapping file not found: {baseline_path}")
+    backup_path = mapping_path.with_suffix(".pre_reset_backup.json")
+    before = mapping_path.read_text(encoding="utf-8") if mapping_path.exists() else ""
+    shutil.copyfile(mapping_path, backup_path) if mapping_path.exists() else None
+    shutil.copyfile(baseline_path, mapping_path)
+    aligner.load_config(str(mapping_path))
+    after = mapping_path.read_text(encoding="utf-8")
+    return {
+        "mapping_path": str(mapping_path),
+        "baseline_path": str(baseline_path),
+        "backup_path": str(backup_path) if before else None,
+        "before_bytes": len(before.encode("utf-8")),
+        "after_bytes": len(after.encode("utf-8")),
+        "aligner_reloaded": True,
+    }
+
+
+def _reset_graph_to_baseline() -> dict:
+    before = neo4j_client.get_graph_overview()
+    cypher = _load_baseline_graph_cypher()
+    with neo4j_client.driver.session() as session:
+        session.run("MATCH (n) DETACH DELETE n").consume()
+        session.run(cypher).consume()
+    after = neo4j_client.get_graph_overview()
+    return {
+        "before": before.get("summary", before),
+        "after": after.get("summary", after),
     }
 
 @app.route("/iterate", methods=["POST"])
@@ -387,12 +459,183 @@ def promote_candidate_mappings():
         app.logger.exception("[WARN] promote-candidate-mappings failed")
         return _error(str(exc), 500)
 
+@app.route("/candidate-mappings/delete", methods=["POST"])
+def delete_candidate_mappings():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        payload = candidate_review_facade.delete(
+            CandidateDeleteRequest(
+                candidate_ids=list(data.get("candidate_ids", [])),
+            )
+        )
+        return _ok(payload)
+    except WorkflowError as exc:
+        return _error(exc.message, exc.status_code)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] delete-candidate-mappings failed")
+        return _error(str(exc), 500)
+
+@app.route("/mapping/config", methods=["GET"])
+def mapping_config_view():
+    try:
+        mapping_path = APP_ROOT / "alignment" / "mapping_config.json"
+        baseline_path = APP_ROOT / "alignment" / "mapping_config.baseline.json"
+        payload = _load_mapping_config(mapping_path)
+        baseline = _load_mapping_config(baseline_path) if baseline_path.exists() else {"version": "", "rules": []}
+        baseline_keys = {
+            (str(rule.get("detector", "")), str(rule.get("feature", "")))
+            for rule in baseline.get("rules", [])
+        }
+        rules = list(payload.get("rules", []))
+        grouped: dict[str, list[dict]] = {}
+        for rule in rules:
+            detector = str(rule.get("detector", "") or "UnknownDetector")
+            grouped.setdefault(detector, []).append(rule)
+        for detector_rules in grouped.values():
+            detector_rules.sort(key=lambda item: str(item.get("feature", "")))
+
+        summary = {
+            "rule_count": len(rules),
+            "detector_count": len(grouped),
+            "baseline_rule_count": len(baseline.get("rules", [])),
+            "nonbaseline_rule_count": sum(
+                1
+                for rule in rules
+                if (str(rule.get("detector", "")), str(rule.get("feature", ""))) not in baseline_keys
+            ),
+        }
+        return _ok(
+            {
+                "version": payload.get("version", ""),
+                "summary": summary,
+                "detectors": grouped,
+                "mapping_path": str(mapping_path),
+                "baseline_path": str(baseline_path),
+            }
+        )
+    except FileNotFoundError as exc:
+        return _error(str(exc), 500)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] mapping-config-view failed")
+        return _error(str(exc), 500)
+
 @app.route("/stats", methods=["GET"])
 def graph_stats():
     try:
         return _ok(neo4j_client.get_graph_stats())
     except Exception as exc:
         app.logger.exception("[WARN] graph stats failed")
+        return _error(str(exc), 500)
+
+@app.route("/graph/reset_baseline", methods=["POST"])
+def reset_graph_baseline():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        confirm = str(data.get("confirm", "") or "").strip()
+        if confirm != GRAPH_RESET_CONFIRM_TOKEN:
+            return _error(
+                f"Confirmation token mismatch. Expected: {GRAPH_RESET_CONFIRM_TOKEN}",
+                400,
+            )
+
+        graph_reset = _reset_graph_to_baseline()
+        app.logger.warning(
+            "[RESET] graph reset to cyper.md baseline; before=%s after=%s",
+            graph_reset.get("before", {}),
+            graph_reset.get("after", {}),
+        )
+        return _ok(
+            {
+                "status": "success",
+                "message": "Neo4j graph reset to cyper.md baseline",
+                "confirm_token_used": GRAPH_RESET_CONFIRM_TOKEN,
+                **graph_reset,
+                "note": "Only Neo4j graph was reset. mapping_config.json was not modified.",
+            }
+        )
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except FileNotFoundError as exc:
+        return _error(str(exc), 500)
+    except Exception as exc:
+        app.logger.exception("[WARN] graph baseline reset failed")
+        return _error(str(exc), 500)
+
+@app.route("/mapping/reset_baseline", methods=["POST"])
+def reset_mapping_baseline():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        confirm = str(data.get("confirm", "") or "").strip()
+        if confirm != MAPPING_RESET_CONFIRM_TOKEN:
+            return _error(
+                f"Confirmation token mismatch. Expected: {MAPPING_RESET_CONFIRM_TOKEN}",
+                400,
+            )
+
+        mapping_reset = _reset_mapping_config_to_baseline()
+        app.logger.warning("[RESET] mapping_config reset to baseline: %s", mapping_reset)
+        return _ok(
+            {
+                "status": "success",
+                "message": "mapping_config.json reset to baseline",
+                "confirm_token_used": MAPPING_RESET_CONFIRM_TOKEN,
+                **mapping_reset,
+                "note": "Only mapping_config.json was reset. Neo4j graph was not modified.",
+            }
+        )
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except FileNotFoundError as exc:
+        return _error(str(exc), 500)
+    except Exception as exc:
+        app.logger.exception("[WARN] mapping baseline reset failed")
+        return _error(str(exc), 500)
+
+@app.route("/system/reset_baseline", methods=["POST"])
+def reset_system_baseline():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        confirm = str(data.get("confirm", "") or "").strip()
+        if confirm != SYSTEM_RESET_CONFIRM_TOKEN:
+            return _error(
+                f"Confirmation token mismatch. Expected: {SYSTEM_RESET_CONFIRM_TOKEN}",
+                400,
+            )
+
+        graph_reset = _reset_graph_to_baseline()
+        mapping_reset = _reset_mapping_config_to_baseline()
+        app.logger.warning(
+            "[RESET] system reset to baseline; graph=%s mapping=%s",
+            graph_reset,
+            mapping_reset,
+        )
+        return _ok(
+            {
+                "status": "success",
+                "message": "Neo4j graph and mapping_config.json reset to baseline",
+                "confirm_token_used": SYSTEM_RESET_CONFIRM_TOKEN,
+                "graph": graph_reset,
+                "mapping": mapping_reset,
+            }
+        )
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except FileNotFoundError as exc:
+        return _error(str(exc), 500)
+    except Exception as exc:
+        app.logger.exception("[WARN] system baseline reset failed")
         return _error(str(exc), 500)
 
 @app.route("/test", methods=["POST"])
