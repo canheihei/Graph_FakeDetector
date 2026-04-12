@@ -15,7 +15,11 @@ from service.common_utils import (
     get_image_base64_list,
     safe_path_name,
 )
-from service.decision_policy import compute_adaptive_fusion, resolve_decision_threshold
+from service.decision_policy import (
+    compute_adaptive_fusion,
+    compute_graph_coupling,
+    resolve_decision_threshold,
+)
 from service.detect_client_v2 import decide_v2
 from service.graph_semantics import GraphSemanticGovernance
 from service.llm_chain import call_qwen, match_domain, reasoning
@@ -245,12 +249,19 @@ class DetectionFacade:
             )
 
         unmapped_payload = self._build_unmapped_payload(unmapped_features)
-        evidence = self._evidence_builder.build(activated_subdomains) if activated_subdomains else []
+        if activated_subdomains:
+            evidence, evidence_diagnostics = self._evidence_builder.build_with_diagnostics(
+                activated_subdomains
+            )
+        else:
+            evidence = []
+            evidence_diagnostics = self._evidence_builder.empty_diagnostics()
         graph_decision = decide_v2(evidence)
         decision = self._merge_decisions(
             detector_results,
             graph_decision,
             content_profile,
+            evidence=evidence,
             request=request,
         )
         gate_diagnostics = self._build_graph_gate_diagnostics(
@@ -284,6 +295,16 @@ class DetectionFacade:
             else reasoning(evidence, decision)
         )
         reasoning_payload["diagnostic_chain"] = diagnostic_chain
+        candidate_context = self._build_candidate_context(
+            detector_results=detector_results,
+            activated_subdomains=activated_subdomains,
+        )
+        candidate_generation_available = self._candidate_generation_available(
+            decision=decision,
+            reasoning_type=reasoning_type,
+            evidence=evidence,
+            evidence_diagnostics=evidence_diagnostics,
+        )
 
         return {
             "label": decision["label"],
@@ -295,17 +316,22 @@ class DetectionFacade:
             "threshold_source": decision.get("threshold_source", "default"),
             "decision_profile": decision.get("decision_profile"),
             "evidence": evidence,
+            "evidence_diagnostics": evidence_diagnostics,
             "reasoning": reasoning_payload,
             "reasoning_type": reasoning_type,
             "diagnostic_chain": diagnostic_chain,
             "needs_review": needs_review,
             "review_reasons": review_reasons,
             "risk_level": risk_level,
+            "evidence_alignment_score": decision.get("evidence_alignment_score"),
+            "graph_influence_weight": decision.get("graph_influence_weight"),
             "graph_gate_diagnostics": gate_diagnostics,
             "unmapped_features": unmapped_payload,
             "evolved_features": evolved_features,
             "semantic_threshold": request.semantic_threshold,
             "content_profile": content_profile,
+            "candidate_generation_available": candidate_generation_available,
+            "candidate_context": candidate_context,
             "visualizations": self._collect_visualizations(detector_results),
         }
 
@@ -314,6 +340,7 @@ class DetectionFacade:
         detector_results,
         graph_decision: Dict,
         content_profile: Dict[str, Any],
+        evidence: List[Dict[str, Any]],
         request: DetectRequest | None = None,
     ) -> Dict:
         detector_map = {result.name: result for result in detector_results}
@@ -351,6 +378,12 @@ class DetectionFacade:
         )
 
         fusion_debug: Dict[str, Any] = {}
+        graph_coupling_debug: Dict[str, Any] = {
+            "alignment_score": 0.0,
+            "influence_weight": 0.0,
+            "coupled_score": 0.0,
+            "boundary_factor": 0.0,
+        }
         if primary_signal and primary_signal.get("weight_ready", False):
             auxiliary_signals = [
                 signal for signal in detector_signals
@@ -366,12 +399,30 @@ class DetectionFacade:
             )
             fused_score = clamp01(float(fusion_debug["fused_score"]))
             score_source = str(fusion_debug.get("mode", "adaptive_fusion"))
+            graph_coupling_debug = compute_graph_coupling(
+                primary_score=fused_score,
+                decision_threshold=decision_threshold,
+                graph_score=graph_confidence if evidence else None,
+                evidence_count=len(evidence),
+                base_graph_weight=float(self._decision_config.fallback_graph_weight),
+            )
+            graph_influence = float(graph_coupling_debug.get("influence_weight", 0.0))
+            if graph_influence > 0.0:
+                fused_score = clamp01(float(graph_coupling_debug.get("coupled_score", fused_score)))
+                score_source = "adaptive_fusion_graph_coupled"
         else:
             fused_score = clamp01(
                 float(self._decision_config.fallback_direct_weight) * direct_score
                 + float(self._decision_config.fallback_graph_weight) * graph_confidence
             )
             score_source = "fusion"
+            graph_coupling_debug = compute_graph_coupling(
+                primary_score=direct_score,
+                decision_threshold=decision_threshold,
+                graph_score=graph_confidence if evidence else None,
+                evidence_count=len(evidence),
+                base_graph_weight=float(self._decision_config.fallback_graph_weight),
+            )
 
         strong_count = sum(1 for item in detector_signals if item["score"] >= 0.55)
         moderate_count = sum(1 for item in detector_signals if item["score"] >= 0.48)
@@ -408,6 +459,9 @@ class DetectionFacade:
             "adaptive_blend_ratio": fusion_debug.get("blend_ratio"),
             "adaptive_shift_indicator": fusion_debug.get("shift_indicator"),
             "auxiliary_score": fusion_debug.get("auxiliary_score"),
+            "evidence_alignment_score": graph_coupling_debug.get("alignment_score"),
+            "graph_influence_weight": graph_coupling_debug.get("influence_weight"),
+            "evidence_count": len(evidence),
         }
 
     @staticmethod
@@ -856,6 +910,115 @@ class DetectionFacade:
             }
             for feature in unmapped_features
         ]
+
+    @staticmethod
+    def _candidate_generation_available(
+        *,
+        decision: Dict[str, Any],
+        reasoning_type: str,
+        evidence: List[Dict[str, Any]],
+        evidence_diagnostics: Dict[str, Any],
+    ) -> bool:
+        if str(decision.get("label", "")).strip().upper() != "FAKE":
+            return False
+        if str(reasoning_type) == "anomaly_model_only":
+            return True
+        if not evidence:
+            return True
+        return int(evidence_diagnostics.get("unresolved_subdomains", 0) or 0) > 0
+
+    def _build_candidate_context(
+        self,
+        *,
+        detector_results: Iterable,
+        activated_subdomains: List,
+    ) -> Dict[str, Any]:
+        rules = getattr(getattr(self._aligner, "_config", None), "rules", []) or []
+        rule_lookup = {(rule.detector, rule.feature): rule for rule in rules}
+        feature_context = {result.name: dict(result.features) for result in detector_results}
+        activated_keys = {
+            (item.source_detector, item.source_feature)
+            for item in activated_subdomains
+        }
+        diagnostics: List[Dict[str, Any]] = []
+
+        for result in detector_results:
+            if not isinstance(result.features, dict):
+                continue
+            for feature_name, raw_value in result.features.items():
+                if not isinstance(raw_value, (int, float)):
+                    continue
+                raw_float = float(raw_value)
+                rule = rule_lookup.get((result.name, feature_name))
+                status = "no_rule"
+                mapped_score = clamp01(raw_float)
+                confidence = clamp01(raw_float)
+                priority_score = clamp01(raw_float)
+                detail: Dict[str, Any] = {
+                    "detector": result.name,
+                    "feature": feature_name,
+                    "raw_value": round(raw_float, 6),
+                    "status": status,
+                    "priority_score": round(priority_score, 6),
+                }
+
+                if rule is not None:
+                    mapped_score = self._aligner.sigmoid(raw_float, rule.sigmoid_k, rule.sigmoid_x0)
+                    confidence = mapped_score * float(rule.weight)
+                    detail.update(
+                        {
+                            "current_subdomain_id": rule.subdomain_id,
+                            "current_subdomain_label": rule.subdomain_label,
+                            "evidence_enabled": bool(rule.evidence_enabled),
+                            "sigmoid_k": float(rule.sigmoid_k),
+                            "sigmoid_x0": float(rule.sigmoid_x0),
+                            "weight": float(rule.weight),
+                            "activation_threshold": float(rule.activation_threshold),
+                            "context_detector": rule.context_detector or "",
+                            "context_feature": rule.context_feature or "",
+                            "context_min_value": float(rule.context_min_value),
+                            "mapped_score": round(float(mapped_score), 6),
+                            "mapped_confidence": round(float(confidence), 6),
+                        }
+                    )
+                    priority_score = clamp01(float(confidence))
+                    if not rule.evidence_enabled:
+                        status = "rule_disabled"
+                    elif (result.name, feature_name) in activated_keys:
+                        status = "activated"
+                    elif rule.context_detector and rule.context_feature:
+                        context_value = (
+                            feature_context
+                            .get(rule.context_detector, {})
+                            .get(rule.context_feature)
+                        )
+                        detail["context_value"] = context_value
+                        if context_value is None or float(context_value) < float(rule.context_min_value):
+                            status = "blocked_by_context"
+                        elif confidence < float(rule.activation_threshold):
+                            status = "blocked_by_threshold"
+                        else:
+                            status = "ready_not_linked"
+                    elif confidence < float(rule.activation_threshold):
+                        status = "blocked_by_threshold"
+                    else:
+                        status = "ready_not_linked"
+
+                detail["status"] = status
+                detail["priority_score"] = round(float(priority_score), 6)
+                diagnostics.append(detail)
+
+        diagnostics.sort(
+            key=lambda item: (
+                0 if item.get("status") == "activated" else 1,
+                float(item.get("priority_score", 0.0)),
+                float(item.get("raw_value", 0.0)),
+            ),
+            reverse=True,
+        )
+        return {
+            "feature_diagnostics": diagnostics[:32],
+        }
 
     @staticmethod
     def _collect_visualizations(detector_results: Iterable) -> Dict:

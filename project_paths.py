@@ -10,6 +10,7 @@ LEGACY_DATASET_DIRNAME = "Dataset"
 LEGACY_UPLOADS_DIRNAME = "uploads"
 PROMPTS_DIRNAME = "prompts"
 MAIN_PROMPT_FILENAME = "main_prompt.txt"
+DETECT_CANDIDATE_PROMPT_FILENAME = "detect_candidate_prompt.txt"
 
 
 def resolve_datasets_root(
@@ -79,4 +80,10 @@ def resolve_main_prompt_path(base_dir: Path | None = None) -> Path:
     if legacy.exists():
         return legacy
 
+    return preferred
+
+
+def resolve_detect_candidate_prompt_path(base_dir: Path | None = None) -> Path:
+    root = (base_dir or PROJECT_ROOT).resolve()
+    preferred = root / PROMPTS_DIRNAME / DETECT_CANDIDATE_PROMPT_FILENAME
     return preferred

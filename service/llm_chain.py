@@ -11,7 +11,7 @@ from openai import OpenAI
 from sentence_transformers import SentenceTransformer, util
 
 from config import ALI_API_KEY, ALI_BASE_URL
-from project_paths import resolve_main_prompt_path
+from project_paths import resolve_detect_candidate_prompt_path, resolve_main_prompt_path
 from service.common_utils import extract_json
 
 
@@ -60,6 +60,11 @@ LLM_FALLBACK_MODELS = _env_list(
 LLM_TEMPERATURE = _env_float("ITERATE_LLM_TEMPERATURE", 1.0)
 LLM_MAX_TOKENS = _env_int("ITERATE_LLM_MAX_TOKENS", 1024)
 LLM_TIMEOUT_SECONDS = _env_float("ITERATE_LLM_TIMEOUT_SECONDS", 45.0)
+CANDIDATE_LLM_TEMPERATURE = _env_float("DETECT_CANDIDATE_LLM_TEMPERATURE", 0.2)
+CANDIDATE_LLM_MAX_TOKENS = _env_int(
+    "DETECT_CANDIDATE_LLM_MAX_TOKENS",
+    max(LLM_MAX_TOKENS, 1600),
+)
 
 
 def call_qwen(prompt_dict: Dict[str, Any]) -> Dict[str, Any]:
@@ -142,6 +147,131 @@ def call_qwen(prompt_dict: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         snippet = raw[raw.find("{") : raw.rfind("}") + 1]
         return json.loads(snippet)
+
+
+def extract_candidate_feature_groups(raw: str) -> Dict[str, Any]:
+    try:
+        return extract_json(raw)
+    except Exception:
+        text = str(raw or "").strip()
+        start = text.find("{")
+        if start == -1:
+            raise ValueError("LLM output does not contain JSON object")
+        text = text[start:]
+        key_index = text.find('"feature_groups"')
+        if key_index == -1:
+            raise ValueError("LLM output missing feature_groups")
+        array_start = text.find("[", key_index)
+        if array_start == -1:
+            raise ValueError("LLM output missing feature_groups array")
+
+        decoder = json.JSONDecoder()
+        groups: List[Dict[str, Any]] = []
+        pos = array_start + 1
+        while pos < len(text):
+            while pos < len(text) and text[pos] in " \r\n\t,":
+                pos += 1
+            if pos >= len(text) or text[pos] == "]":
+                break
+            if text[pos] != "{":
+                break
+            try:
+                obj, offset = decoder.raw_decode(text[pos:])
+            except json.JSONDecodeError:
+                break
+            if isinstance(obj, dict):
+                groups.append(obj)
+            pos += offset
+
+        if not groups:
+            raise ValueError("LLM candidate output could not be repaired")
+        return {"feature_groups": groups}
+
+
+def _request_llm_json(
+    system_prompt: str,
+    user_payload: Dict[str, Any],
+    *,
+    max_length: int,
+    temperature: float,
+    max_tokens: int,
+    parser=None,
+) -> Dict[str, Any]:
+    user_input = safe_truncate_json(user_payload, max_length=max_length)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input},
+    ]
+
+    candidates: List[str] = []
+    for model_name in [LLM_MODEL_NAME, *LLM_FALLBACK_MODELS]:
+        if model_name and model_name not in candidates:
+            candidates.append(model_name)
+
+    raw = ""
+    last_exc: Exception | None = None
+    for model_name in candidates:
+        request_args = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        try:
+            response = client.with_options(timeout=LLM_TIMEOUT_SECONDS).chat.completions.create(**request_args)
+        except Exception as exc:
+            if "invalid temperature" in str(exc).lower() and float(request_args["temperature"]) != 1.0:
+                request_args["temperature"] = 1.0
+                try:
+                    response = client.with_options(timeout=LLM_TIMEOUT_SECONDS).chat.completions.create(**request_args)
+                except Exception as retry_exc:
+                    last_exc = retry_exc
+                    print(f"[WARN] LLM request failed on model={model_name}: {retry_exc}")
+                    continue
+            else:
+                last_exc = exc
+                print(f"[WARN] LLM request failed on model={model_name}: {exc}")
+                continue
+
+        message_content = response.choices[0].message.content
+        if isinstance(message_content, list):
+            raw = "".join(
+                item.get("text", "") if isinstance(item, dict) else str(item)
+                for item in message_content
+            ).strip()
+        else:
+            raw = str(message_content or "").strip()
+        if raw:
+            break
+
+    if not raw:
+        if last_exc is not None:
+            raise last_exc
+        raise ValueError("LLM returned empty content")
+    try:
+        if parser is not None:
+            return parser(raw)
+        return extract_json(raw)
+    except Exception:
+        if parser is not None:
+            return parser(raw)
+        snippet = raw[raw.find("{") : raw.rfind("}") + 1]
+        return json.loads(snippet)
+
+
+def call_detect_candidate_llm(prompt_dict: Dict[str, Any]) -> Dict[str, Any]:
+    prompt_path = resolve_detect_candidate_prompt_path()
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+    system_prompt = prompt_path.read_text(encoding="utf-8")
+    return _request_llm_json(
+        system_prompt,
+        prompt_dict,
+        max_length=12000,
+        temperature=CANDIDATE_LLM_TEMPERATURE,
+        max_tokens=CANDIDATE_LLM_MAX_TOKENS,
+        parser=extract_candidate_feature_groups,
+    )
 
 
 def safe_payload(prompt: str, existing_schema: Dict[str, Any], image_infos: List[Dict[str, Any]]) -> Dict[str, Any]:

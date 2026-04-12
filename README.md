@@ -270,6 +270,8 @@ Graph_FakeDetector/
 - `confidence`
 - `evidence`
 - `reasoning`
+- `candidate_generation_available`
+- `candidate_context`
 - `unmapped_features`
 - `evolved_features`
 - `semantic_threshold`
@@ -304,6 +306,38 @@ JSON 字段:
 
 根据 detector 与 feature 信号建议 domain。
 
+### `POST /detect/candidates`
+
+对弱证据伪造样本手动触发候选生成。输入 detect 结果页的结构化 JSON，上游由 LLM 生成候选图谱结构和候选映射，写入 Neo4j 候选层与 `alignment/mapping_candidates.json`。
+
+候选生成当前包含以下加固策略：
+
+- 候选 prompt 单独收敛，默认每个 feature 生成 `2` 条候选，必要时才放宽到 `3`
+- 候选输出限制更短的 `describe / rationale`
+- 候选 LLM 使用独立温度和更高 `max_tokens`
+- 截断 JSON 会优先抢救已经完整返回的 `feature_groups`
+- 非法 `context_detector / context_feature` 会在入库前被清洗为空
+- 候选审批台现已迁移到 detect 前端页面，`iterate` 页面仅保留图谱迭代职责
+
+### `GET /candidate-mappings`
+
+列出候选映射审批清单，支持按状态筛选。
+
+### `POST /candidate-mappings/update`
+
+更新单条候选的图谱字段、映射参数、审批状态。
+
+### `POST /candidate-mappings/benchmark`
+
+对勾选候选运行临时 overlay benchmark，支持：
+
+- `mode=quick`
+- `mode=formal`
+
+### `POST /candidate-mappings/promote`
+
+将通过评测门禁的候选晋级到 `alignment/mapping_config.json`。当前 active mapping 仍保持单个 `detector + feature` 只能存在一条正式规则。
+
 ### `GET /stats`
 
 查询图谱统计信息。
@@ -326,6 +360,9 @@ JSON 字段:
 - 训练、评测、接口调试优先使用云端环境
 - 修改代码时优先保持接口兼容，只改内部实现
 - detector 阈值、权重路径、校准参数不要继续散落在多个文件
+- 候选映射审批清单固定保存在 `alignment/mapping_candidates.json`
+- 候选图结构进入 Neo4j 候选层，不直接参与 detect 正式证据链
+- 只有评测通过后，候选才允许晋级到 `alignment/mapping_config.json`
 
 ### 禁止大范围扫描目录
 

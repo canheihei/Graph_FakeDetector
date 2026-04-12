@@ -65,6 +65,32 @@ class DetectionDecisionConfig:
     adaptive_fusion: AdaptiveFusionConfig = field(default_factory=AdaptiveFusionConfig)
 
 
+@dataclass(frozen=True)
+class CandidateBenchmarkModeConfig:
+    sample_per_class: int
+    min_accuracy_valid: float
+    min_balanced_accuracy: float
+
+
+@dataclass(frozen=True)
+class CandidateReviewConfig:
+    dataset_profile_roots: Mapping[str, str] = field(default_factory=dict)
+    quick: CandidateBenchmarkModeConfig = field(
+        default_factory=lambda: CandidateBenchmarkModeConfig(
+            sample_per_class=20,
+            min_accuracy_valid=0.70,
+            min_balanced_accuracy=0.70,
+        )
+    )
+    formal: CandidateBenchmarkModeConfig = field(
+        default_factory=lambda: CandidateBenchmarkModeConfig(
+            sample_per_class=80,
+            min_accuracy_valid=0.80,
+            min_balanced_accuracy=0.80,
+        )
+    )
+
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_WEIGHTS_ROOT = PROJECT_ROOT / "weights"
 WEIGHTS_ROOT = Path(os.getenv("GRAPH_FAKEDETECTOR_WEIGHTS_ROOT", str(DEFAULT_WEIGHTS_ROOT)))
@@ -185,6 +211,15 @@ DETECTION_DECISION_CONFIG = DetectionDecisionConfig(
         "wilddeepfake": 0.11,
     }
 )
+CANDIDATE_REVIEW_CONFIG = CandidateReviewConfig(
+    dataset_profile_roots={
+        "default": str(PROJECT_ROOT / "Datasets" / "Test"),
+        "celeb_df": str(PROJECT_ROOT / "Datasets" / "Celeb-DF"),
+        "celebdf": str(PROJECT_ROOT / "Datasets" / "Celeb-DF"),
+        "dfdc": str(PROJECT_ROOT / "Datasets" / "DFDC"),
+        "wilddeepfake": str(PROJECT_ROOT / "Datasets" / "WildDeepfake"),
+    }
+)
 
 
 def get_detector_config(name: str) -> DetectorConfig:
@@ -210,3 +245,7 @@ def score_from_placeholder_proxy(proxy_score: float, score_range: Optional[Place
 
 def get_detection_decision_config() -> DetectionDecisionConfig:
     return DETECTION_DECISION_CONFIG
+
+
+def get_candidate_review_config() -> CandidateReviewConfig:
+    return CANDIDATE_REVIEW_CONFIG

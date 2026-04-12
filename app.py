@@ -6,8 +6,19 @@ from flask import Flask, abort, jsonify, render_template, request, send_from_dir
 from alignment.aligner import FeatureOntologyAligner
 from alignment.evidence_builder import evidence_builder
 from alignment.evolver import graph_evolver
+from detector_config import get_candidate_review_config
 from detectors.hub import DetectorHub
 from project_paths import resolve_datasets_root
+from service.candidate_benchmark import CandidateBenchmarkRunner
+from service.candidate_graph import CandidateGraphStore
+from service.candidate_review import (
+    CandidateBenchmarkRequest,
+    CandidatePromoteRequest,
+    CandidateRequest,
+    CandidateReviewFacade,
+    CandidateUpdateRequest,
+)
+from service.candidate_store import CandidateStore
 from service.facades import (
     DetectRequest,
     DetectionFacade,
@@ -62,6 +73,19 @@ evolution_facade = EvolutionFacade(
     graph_evolver=graph_evolver,
     graph_writer=graph_writer,
     neo4j_client=neo4j_client,
+)
+candidate_review_facade = CandidateReviewFacade(
+    candidate_store=CandidateStore(APP_ROOT / "alignment" / "mapping_candidates.json"),
+    candidate_graph_store=CandidateGraphStore(neo4j_client),
+    benchmark_runner=CandidateBenchmarkRunner(
+        hub=hub,
+        graph_evolver=graph_evolver,
+        evidence_builder=evidence_builder,
+        logger=app.logger,
+        dataset_profile_roots=dict(get_candidate_review_config().dataset_profile_roots),
+        active_mapping_path=APP_ROOT / "alignment" / "mapping_config.json",
+    ),
+    mapping_config_path=APP_ROOT / "alignment" / "mapping_config.json",
 )
 
 
@@ -257,6 +281,110 @@ def suggest_domain():
         return _error(exc.message, exc.status_code)
     except Exception as exc:
         app.logger.exception("[WARN] suggest-domain failed")
+        return _error(str(exc), 500)
+
+@app.route("/detect/candidates", methods=["POST"])
+def detect_candidates():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+
+        payload = candidate_review_facade.generate(
+            CandidateRequest(
+                detect_result=data.get("detect_result", {}),
+                source_sample_name=data.get("source_sample_name", ""),
+                decision_profile=(data.get("decision_profile") or "").strip() or None,
+            )
+        )
+        return _ok(payload)
+    except WorkflowError as exc:
+        return _error(exc.message, exc.status_code)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] detect-candidates failed")
+        return _error(str(exc), 500)
+
+@app.route("/candidate-mappings", methods=["GET"])
+def list_candidate_mappings():
+    try:
+        status = (request.args.get("status") or "").strip() or None
+        return _ok(candidate_review_facade.list_items(status=status))
+    except Exception as exc:
+        app.logger.exception("[WARN] list-candidate-mappings failed")
+        return _error(str(exc), 500)
+
+@app.route("/candidate-mappings/update", methods=["POST"])
+def update_candidate_mapping():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        payload = candidate_review_facade.update_item(
+            CandidateUpdateRequest(
+                candidate_id=str(data.get("candidate_id", "") or ""),
+                graph_candidate=data.get("graph_candidate"),
+                mapping_candidate=data.get("mapping_candidate"),
+                status=data.get("status"),
+                approval_state=data.get("approval_state"),
+            )
+        )
+        return _ok(payload)
+    except WorkflowError as exc:
+        return _error(exc.message, exc.status_code)
+    except (KeyError, ValueError) as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] update-candidate-mapping failed")
+        return _error(str(exc), 500)
+
+@app.route("/candidate-mappings/benchmark", methods=["POST"])
+def benchmark_candidate_mappings():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        payload = candidate_review_facade.benchmark(
+            CandidateBenchmarkRequest(
+                candidate_ids=list(data.get("candidate_ids", [])),
+                mode=str(data.get("mode", "") or ""),
+                decision_profile=(data.get("decision_profile") or "").strip() or None,
+                sample_per_class=data.get("sample_per_class"),
+                semantic_threshold=_parse_threshold(data),
+                decision_threshold_override=_parse_optional_threshold(
+                    data,
+                    "decision_threshold_override",
+                ),
+            )
+        )
+        return _ok(payload)
+    except WorkflowError as exc:
+        return _error(exc.message, exc.status_code)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] benchmark-candidate-mappings failed")
+        return _error(str(exc), 500)
+
+@app.route("/candidate-mappings/promote", methods=["POST"])
+def promote_candidate_mappings():
+    try:
+        data = request.get_json()
+        if not data:
+            return _error("Invalid JSON", 400)
+        payload = candidate_review_facade.promote(
+            CandidatePromoteRequest(
+                candidate_ids=list(data.get("candidate_ids", [])),
+            )
+        )
+        return _ok(payload)
+    except WorkflowError as exc:
+        return _error(exc.message, exc.status_code)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+    except Exception as exc:
+        app.logger.exception("[WARN] promote-candidate-mappings failed")
         return _error(str(exc), 500)
 
 @app.route("/stats", methods=["GET"])
