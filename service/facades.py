@@ -337,35 +337,6 @@ class DetectionFacade:
             else 0.0
         )
 
-        if not content_profile.get("supported_input", True):
-            fft_signal = next(
-                (item for item in detector_signals if item["name"] == "FFTDetector"),
-                None,
-            )
-            generic_score = float(fft_signal["score"]) if fft_signal else 0.0
-            portrait_confidence = float(content_profile.get("portrait_confidence", 0.0))
-            confidence_value = clamp01(max(0.55, 1.0 - portrait_confidence))
-            return {
-                **graph_decision,
-                "label": "OUT_OF_SCOPE",
-                "confidence": round(confidence_value, 3),
-                "direct_score": round(direct_score, 3),
-                "graph_score": round(graph_confidence, 3),
-                "decision_threshold": 1.0,
-                "strong_signal_count": 0,
-                "moderate_signal_count": 0,
-                "signal_sources": [item["name"] for item in detector_signals],
-                "policy": "unsupported_scene_fallback",
-                "binary_label": None,
-                "scope": content_profile.get("content_scope", "out_of_scope"),
-                "generic_score": round(generic_score, 3),
-                "decision_fake_score": round(direct_score, 3),
-                "decision_margin": None,
-                "score_source": "unsupported_scope_fallback",
-                "threshold_source": "unsupported_scope",
-                "decision_profile": decision_profile or None,
-            }
-
         has_primary = bool(primary_signal and primary_signal.get("weight_ready", False))
         base_threshold = (
             float(primary_signal.get("threshold", 0.5))
@@ -539,37 +510,29 @@ class DetectionFacade:
         human_face_score = float(appearance_meta.get("human_face_score", 0.0))
         photo_texture_score = float(appearance_meta.get("photo_texture_score", 0.0))
         quality_risk = float(appearance_meta.get("quality_risk", 0.0))
-        supported_input = (
-            face_detected
-            and not unsupported_input
-            and face_confidence >= 0.55
-        )
-        portrait_confidence = (
-            clamp01(
-                0.45 * face_confidence
-                + 0.35 * human_face_score
-                + 0.20 * (1.0 - quality_risk)
-            )
-            if supported_input
-            else clamp01(0.10 + 0.15 * (1.0 - quality_risk))
+        supported_input = True
+        portrait_confidence = clamp01(
+            0.45 * face_confidence
+            + 0.35 * human_face_score
+            + 0.20 * (1.0 - quality_risk)
         )
         content_scope = input_scope
-        if supported_input:
+        if face_detected and not unsupported_input:
             content_scope = "human_portrait"
-        elif input_scope == "human_portrait" and face_detected:
+        elif face_detected:
             content_scope = "non_standard_human"
 
         return {
             "supported_input": supported_input,
-            "content_scope": "human_portrait" if supported_input else content_scope,
+            "content_scope": content_scope,
             "face_detected": face_detected,
             "face_confidence": round(float(face_confidence), 3),
             "human_face_score": round(float(human_face_score), 3),
             "photo_texture_score": round(float(photo_texture_score), 3),
             "quality_risk": round(float(quality_risk), 3),
             "portrait_confidence": round(float(portrait_confidence), 3),
-            "allow_graph_reasoning": supported_input,
-            "allow_face_fusion": supported_input,
+            "allow_graph_reasoning": True,
+            "allow_face_fusion": True,
         }
 
     @staticmethod

@@ -249,6 +249,9 @@ fileInput.addEventListener("change", async function (event) {
     });
 
     const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "识别失败，请稍后重试。");
+    }
 
     // 更新步骤 3 为完成
     document.getElementById(step3Id).querySelector('.flex-shrink-0').innerHTML = `<svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
@@ -333,9 +336,9 @@ fileInput.addEventListener("change", async function (event) {
 
 
   } catch (err) {
-    createWorkflowStepUI("❌ 分析流程中断：后端服务异常", 'error');
+    createWorkflowStepUI(`❌ 分析流程中断：${err.message || '请求失败'}`, 'error');
     console.error(err);
-    alert("识别失败，请检查控制台日志或稍后重试。");
+    alert(err.message || "识别失败，请检查控制台日志或稍后重试。");
   }
 });
 
