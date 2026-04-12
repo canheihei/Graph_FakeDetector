@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--predictions-csv",
-        default="reports/domain_generalization/DFDC_sample300_dg_round1_override049/predictions.csv",
+        default="reports/report_dfdc_sample300_override_049_2026-04-11/predictions.csv",
         help="Benchmark prediction csv used for hard/noise mining.",
     )
     parser.add_argument(
@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--report-path",
-        default="reports/domain_generalization/dfdc_curation_report.json",
+        default="reports/report_dfdc_curation_report.json",
         help="JSON report path.",
     )
     parser.add_argument(

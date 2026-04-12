@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default="weights/calibrated_vision_detector_dg.pt")
     parser.add_argument(
         "--report-path",
-        default="reports/domain_generalization/training_calibrated_vision_dg.json",
+        default="reports/report_training_calibrated_vision_dg.json",
     )
     return parser.parse_args()
 
