@@ -1,68 +1,106 @@
 # Graph_FakeDetector
 
-面向 Deepfake 图像检测与域泛化研究的工程项目，当前主线以监督视觉检测器为核心，图谱层负责证据补充、语义治理和演化兼容输出。
+面向 Deepfake 图像检测与域泛化增强研究的工程系统。当前版本以视觉主检测器为核心，结合多检测器协同、三层语义图谱、候选层审批工作流、域级阈值校准与审计链输出，目标不是只给出真假标签，而是给出可追溯、可审计、可演化的检测结果。
 
 ## 项目概览
 
 - 主检测器: `CalibratedVision`
-- 当前视觉主干: `EfficientNet-B0` 迁移学习版本
+- 当前主视觉主干: `EfficientNet-B0`
+- 当前主权重: `weights/calibrated_vision_detector_dg_round5_dfdc_curated.pt`
 - 当前主入口: `app.py`
 - 当前主接口: `/detect`
 - 图谱语义治理: `service/graph_semantics.py`
-- 检测输出策略: 保持外部接口兼容，仅替换 detector 内部实现
+- 决策层策略: `service/decision_policy.py`
+- active mapping 配置: `alignment/mapping_config.json`
+- 候选审批清单: `alignment/mapping_candidates.json`
 
 项目目标不只是做二分类，还包括:
 
 - 对 Deepfake 图像给出稳定检测结果
 - 补充图谱证据与推理说明
 - 支持 feature -> domain 的持续演化
+- 支持弱证据样本的候选生成、评测与晋级
+- 支持图谱基线、mapping 基线与系统整体恢复
 - 为 benchmark、回归验证和可视化分析提供统一产物
 
 ## 当前状态
 
 已完成:
 
-- 三层语义去重系统
-- detector 内部配置、权重路径、阈值和占位模式统一管理
-- `CalibratedVision` 升级为预训练 `EfficientNet-B0` 迁移学习方案
-- `scripts/benchmark/visualize_detect_benchmark.py` 支持并行 `--workers`
-- 图谱进化链路统一接入语义治理
+- 三层语义去重系统（图谱层 / 配置层 / 精确匹配层）
+- detector 内部配置、权重路径、阈值、占位模式统一管理
+- `CalibratedVision` 升级为 `EfficientNet-B0` 迁移学习方案
+- `detect` 输出审计字段：`reasoning_type / diagnostic_chain / risk_level / needs_review`
+- 决策层域级阈值校准：`decision_profile / decision_threshold_override`
+- 图谱证据构建诊断：`id_matched / label_fallback_matched / unresolved_subdomains`
 - `iterate` 跨轮次语义复用与去重
-- 云端 `detect` / `iterate` 冒烟验证通过
+- 弱证据候选层一期工作流：
+  - `/detect/candidates`
+  - `mapping_candidates.json`
+  - detect 单页审批
+  - quick / formal benchmark
+  - selective promote
+- promote 已支持：
+  - candidate graph merge 到 active graph
+  - active mapping 替换式更新
+  - promote 日志返回
+- 可视化页已支持：
+  - active mapping 的 detector / feature 分组视图
+  - 图谱 / mapping / 系统一键重置入口
+- 云端 detect / iterate / candidate / promote / visualization 链路已验证
 
 进行中:
 
 - 图谱证据层专业化补齐
 - 历史图谱脏节点清洗与 ontology 收敛
-- `iterate` 链路进一步精简
+- 候选语义进一步收敛，减少 LLM 漂移
+- benchmark overlay 与线上真实表现的一致性继续量化
 
 ## 已验证结果
 
 ### Benchmark
 
-- `2026-03-23` 抽样基准
-  - 数据集: `Datasets/Test`
-  - 协议: Fake/Real 各随机 `100` 张
-  - 准确率: `97.0%`
-  - 报告目录: `reports/detect_benchmark_sample100_effb0_final/`
+- `2026-04-12` 外部域 `sample300` 工程口径
+  - Celeb-DF: `Accuracy(valid)=99.17%`
+  - DFDC: `Accuracy(valid)=94.83%`
+  - WildDeepfake: `Accuracy(valid)=100.00%`
+  - 对应报告:
+    - `reports/report_celeb_df_sample300_profile_celeb_df_evidencehit_2026-04-12/`
+    - `reports/report_dfdc_sample300_profile_dfdc_evidencehit_2026-04-12/`
+    - `reports/report_wilddeepfake_sample300_profile_wilddeepfake_evidencehit_2026-04-12/`
 
-- `2026-03-23` 全量基准
+- `2026-04-12` 证据链相关指标
+  - `evidence_hit_rate`
+  - `fake_evidence_hit_rate`
+  - `high_score_no_evidence_rate`
+  - `unresolved_subdomain_rate`
+  - `avg_evidence_alignment_score`
+
+- 项目历史同分布 full benchmark
   - 数据集: `Datasets/Test`
   - 样本数: `10905`
-  - 准确率: `98.8996%`
+  - `Accuracy(valid)=98.8996%`
   - 报告目录: `reports/detect_benchmark_full_effb0_workers4/`
 
 ### 云端接口验证
 
-- `2026-03-23` 云端接口冒烟
-  - 脚本: `artifacts/remote_interface_smoke.py`
-  - 验证接口: `GET /stats`, `GET /neo4j_overview`, `POST /detect`, `POST /iterate`
-  - 结果: 全部 `200`
+- 已验证接口:
+  - `GET /stats`
+  - `GET /neo4j_overview`
+  - `GET /mapping/config`
+  - `POST /detect`
+  - `POST /iterate`
+  - `POST /detect/candidates`
+  - `POST /candidate-mappings/benchmark`
+  - `POST /candidate-mappings/promote`
+  - `POST /graph/reset_baseline`
+  - `POST /mapping/reset_baseline`
+  - `POST /system/reset_baseline`
 
-- `2026-03-23` 云端跨轮次回归
-  - 脚本: `artifacts/remote_iterate_regression.py`
-  - 结果: `before_count=10`, `after_count=10`, `count_delta=0`
-  - 结论: 相同 prompt 连续执行两次 `/iterate`，当前基本可阻止近义 `SubDomain` 持续膨胀
+- 已验证行为:
+  - 相同 prompt 连续执行 `/iterate` 时，当前可阻止近义 `SubDomain` 持续膨胀
+  - promote 后，同一样本可从 `anomaly_model_only` 转为 `anomaly_evidence`
+  - benchmark overlay 支持临时 active graph merge，结束后清理临时节点
 
 ## 本科毕设建议验证协议
 
@@ -212,9 +250,14 @@ Graph_FakeDetector/
 ### 主检测器
 
 - 名称: `CalibratedVision`
-- 权重文件: `weights/calibrated_vision_detector.pt`
-- 默认阈值: `0.38`
+- 当前主权重: `weights/calibrated_vision_detector_dg_round5_dfdc_curated.pt`
+- 视觉主干: `EfficientNet-B0`
 - runtime 参数统一位于 `detector_config.py`
+- 当前决策层会结合:
+  - `CalibratedVision`
+  - `MetaEnsemble`
+  - FFT / Appearance / Boundary 等辅助信号
+  - 图谱证据耦合分数
 
 当前策略:
 
@@ -224,15 +267,14 @@ Graph_FakeDetector/
 
 ### 其他检测器
 
-仓库中仍保留多类 detector 实现，用于补充信号、兼容历史链路或 meta 组合:
+当前主链路中实际参与或兼容保留的 detector 包括:
 
 - `FFTDetector`
 - `AppearanceDetector`
 - `BoundaryConsistency`
-- `EfficientNetB4`
-- `ViT`
-- `FreqNet`
 - `MetaEnsemble`
+
+仓库中仍保留部分历史 detector 配置与兼容项，但当前论文/报告口径应以现行主链路为准，不宜继续强调未实际参与主链路的历史模型。
 
 ## 语义去重与治理
 
@@ -350,6 +392,10 @@ JSON 字段:
 
 查询 Neo4j 图谱概览。
 
+### `GET /mapping/config`
+
+返回当前 active mapping 的只读视图，供 `visualization.html` 按 `detector -> feature` 分组展示规则、阈值、权重、context 与 `subdomain_id`。
+
 ### `POST /graph/reset_baseline`
 
 清空当前 Neo4j 图谱并按 `cyper.md` 中的基础 Cypher 重建基线图谱。该接口要求确认短语 `RESET_BASELINE_GRAPH`，且只重置 Neo4j 图谱，不修改 `mapping_config.json`。
@@ -367,6 +413,14 @@ JSON 字段:
 - `GET /api/reports`: 返回报告列表与最新报告摘要
 - `DELETE /api/reports/<report_name>`: 删除报告目录
 - `GET /reports/view/<report_name>/...`: 访问报告 HTML、`metrics.json`、`predictions.csv`
+
+### 可视化页面当前能力
+
+- 图谱节点 / 关系 / 域层级统计
+- active mapping 的 detector / feature 可读视图
+- `cyper.md` 基线图谱重置
+- `mapping_config.baseline.json` 基线 mapping 重置
+- 图谱 + mapping 一键系统重置
 
 ## 运行与协作约束
 
@@ -539,27 +593,30 @@ python artifacts/remote_iterate_regression.py
 
 ## 当前主要问题
 
-- 图谱证据层仍存在较多 `no matching graph records found for activated subdomains`
-- benchmark 模式下证据日志仍有明显 I/O 噪音
-- 历史图谱中仍保留早期遗留节点、泛化标签和少量不严格旧子域
-- 云端仍可能提示 `Custom detector weights not found`
+- 外部域仍存在波动，尤其 DFDC 相比 Celeb-DF / WildDeepfake 仍是相对短板域
+- 候选层语义仍可能出现过泛 domain / subdomain 命名，需要进一步收敛
+- benchmark overlay 与正式线上行为虽然已更接近，但仍值得继续量化
+- 历史图谱中仍保留少量脏节点与非收敛语义，ontology 清洗未完全结束
+- 云端环境偶发存在缓存、模板覆盖和依赖版本差异，需要继续保持“本地+云端”双端校验
 
 这些问题当前不会直接破坏主分类准确率，但会影响:
 
 - 证据解释的专业性
-- 图谱映射完整度
-- benchmark 日志质量
-- 远端权重态一致性
+- 图谱与 active mapping 的长期可维护性
+- candidate 审批效率与语义一致性
+- benchmark / 线上一致性
+- 云端运维稳定性
 
 ## 下一阶段建议
 
-- P1: 清理 benchmark 模式下的冗余证据日志
 - P1: 清洗历史图谱脏节点并做 ontology 迁移
-- P2: 补齐 `CalibratedVision` 对应的 Neo4j subdomain 映射
+- P1: 继续提升候选层命名和 domain 约束，减少 LLM 漂移
+- P1: 扩展 evidence-hit 指标与 promote 后线上效果的联动分析
 - P2: 收集全量误判样本并做 hard case 再训练
-- P2: 优先做按域阈值校准，而不是继续堆 detector 数量
+- P2: 继续做按域阈值校准，而不是继续堆 detector 数量
+- P2: 完善 reset / rollback / 审批日志体系
 - P3: 继续精简 `iterate` 链路，减少 token 与无效生成
-- P3: 继续提升 LLM 输出稳定性，减少空返回和过泛描述
+- P3: 若走论文路线，增加更严格 protocol 下的 AUC 对齐实验
 
 ## 协作建议
 
