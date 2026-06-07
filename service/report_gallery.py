@@ -11,6 +11,80 @@ from typing import Any, Dict, List
 
 SAFE_REPORT_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
+DATASET_LABELS = {
+    "celeb_df": "Celeb-DF",
+    "celebdf": "Celeb-DF",
+    "dfdc": "DFDC",
+    "wilddeepfake": "WildDeepfake",
+    "in_domain": "OpenForensics",
+}
+
+
+def _format_override_token(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if text.replace(".", "", 1).isdigit() and "." in text:
+        return text
+    if text.isdigit():
+        if len(text) == 1:
+            return f"0.{text}"
+        return f"{int(text) / 100:.2f}"
+    return text
+
+
+def describe_report_name(report_name: str) -> Dict[str, str]:
+    name = str(report_name or "").strip()
+    tokens = [token for token in name.split("_") if token]
+    date_token = tokens[-1] if tokens and re.fullmatch(r"\d{4}-\d{2}-\d{2}", tokens[-1]) else ""
+    core_tokens = tokens[:-1] if date_token else tokens
+
+    dataset_key = ""
+    dataset_label = "评测"
+    for candidate in sorted(DATASET_LABELS.keys(), key=len, reverse=True):
+        candidate_tokens = candidate.split("_")
+        if core_tokens[1:1 + len(candidate_tokens)] == candidate_tokens:
+            dataset_key = candidate
+            dataset_label = DATASET_LABELS[candidate]
+            break
+
+    scope_label = ""
+    feature_parts: List[str] = []
+    if "full" in core_tokens:
+        scope_label = "全量"
+    else:
+        for token in core_tokens:
+            if token.startswith("sample"):
+                scope_label = token
+                break
+
+    if "profile" in core_tokens:
+        index = core_tokens.index("profile")
+        if index + 1 < len(core_tokens):
+            feature_parts.append(f"域阈值 {core_tokens[index + 1]}")
+    if "override" in core_tokens:
+        index = core_tokens.index("override")
+        if index + 1 < len(core_tokens):
+            feature_parts.append(f"阈值覆写 {_format_override_token(core_tokens[index + 1])}")
+    if "evidencehit" in core_tokens:
+        feature_parts.append("证据链")
+    if "effb0" in core_tokens:
+        feature_parts.append("EfficientNet-B0")
+    for token in core_tokens:
+        worker_match = re.fullmatch(r"workers(\d+)", token)
+        if worker_match:
+            feature_parts.append(f"{worker_match.group(1)}线程")
+
+    title = f"{dataset_label}评测报告"
+    subtitle_parts = [part for part in [scope_label] + feature_parts + ([date_token] if date_token else []) if part]
+    subtitle = " / ".join(subtitle_parts) if subtitle_parts else name.replace("_", " ")
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "dataset_label": dataset_label,
+        "date": date_token,
+    }
+
 
 @dataclass(frozen=True)
 class ReportArtifact:
@@ -30,9 +104,12 @@ class ReportArtifact:
         recall_fake = float(self.summary.get("recall_fake", 0.0) or 0.0)
         avg_confidence_correct = float(self.summary.get("avg_confidence_correct", 0.0) or 0.0)
 
+        display = describe_report_name(self.name)
         return {
             "name": self.name,
-            "title": self.name.replace("_", " "),
+            "title": display["title"],
+            "subtitle": display["subtitle"],
+            "dataset_label": display["dataset_label"],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "created_at_display": self.created_at.strftime("%Y-%m-%d %H:%M"),

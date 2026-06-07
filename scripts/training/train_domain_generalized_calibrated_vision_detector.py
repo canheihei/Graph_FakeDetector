@@ -260,6 +260,106 @@ def find_best_threshold_per_dataset(
     return output
 
 
+def average_balanced_accuracy(per_dataset: Dict[str, dict], domains: Sequence[str]) -> float:
+    values = [
+        float(per_dataset[domain]["balanced_accuracy"])
+        for domain in domains
+        if domain in per_dataset
+    ]
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+
+
+def compute_guardrail_gap(
+    payload: dict,
+    *,
+    guardrail_domains: Sequence[str],
+    guardrail_min_balanced_accuracy: float,
+) -> float:
+    per_dataset = payload.get("per_dataset", {})
+    gap = 0.0
+    for domain in guardrail_domains:
+        score = float(per_dataset.get(domain, {}).get("balanced_accuracy", 0.0))
+        gap += max(float(guardrail_min_balanced_accuracy) - score, 0.0)
+    return gap
+
+
+def summarize_epoch_selection(
+    payload: dict,
+    *,
+    guardrail_domains: Sequence[str],
+    target_domains: Sequence[str],
+    guardrail_min_balanced_accuracy: float,
+) -> dict:
+    per_dataset = payload.get("per_dataset", {})
+    return {
+        "epoch": int(payload.get("epoch", 0)),
+        "guardrail_domains": [str(domain) for domain in guardrail_domains],
+        "target_domains": [str(domain) for domain in target_domains],
+        "guardrail_min_balanced_accuracy": round(float(guardrail_min_balanced_accuracy), 6),
+        "guardrail_average": round(average_balanced_accuracy(per_dataset, guardrail_domains), 6),
+        "target_average": round(average_balanced_accuracy(per_dataset, target_domains), 6),
+        "guardrail_gap": round(
+            compute_guardrail_gap(
+                payload,
+                guardrail_domains=guardrail_domains,
+                guardrail_min_balanced_accuracy=guardrail_min_balanced_accuracy,
+            ),
+            6,
+        ),
+    }
+
+
+def choose_best_epoch_payload(
+    payloads: Sequence[dict],
+    *,
+    guardrail_domains: Sequence[str],
+    guardrail_min_balanced_accuracy: float,
+    target_domains: Sequence[str],
+) -> dict:
+    if not payloads:
+        raise ValueError("payloads must not be empty")
+
+    def with_summary(payload: dict) -> dict:
+        summary = summarize_epoch_selection(
+            payload,
+            guardrail_domains=guardrail_domains,
+            target_domains=target_domains,
+            guardrail_min_balanced_accuracy=guardrail_min_balanced_accuracy,
+        )
+        enriched = dict(payload)
+        enriched["selection_summary"] = summary
+        return enriched
+
+    enriched_payloads = [with_summary(payload) for payload in payloads]
+    qualified = [
+        payload
+        for payload in enriched_payloads
+        if float(payload["selection_summary"]["guardrail_gap"]) <= 1e-12
+    ]
+    candidates = qualified if qualified else enriched_payloads
+
+    def score(payload: dict) -> tuple:
+        summary = payload["selection_summary"]
+        val_metrics = payload.get("val_metrics", {})
+        if qualified:
+            return (
+                float(summary["target_average"]),
+                float(payload.get("mean_dataset_balanced_accuracy", 0.0)),
+                float(val_metrics.get("balanced_accuracy", 0.0)),
+                float(val_metrics.get("accuracy", 0.0)),
+            )
+        return (
+            -float(summary["guardrail_gap"]),
+            float(summary["target_average"]),
+            float(payload.get("mean_dataset_balanced_accuracy", 0.0)),
+            float(val_metrics.get("balanced_accuracy", 0.0)),
+        )
+
+    return max(candidates, key=score)
+
+
 def evaluate_by_dataset(
     probs: Sequence[float],
     labels: Sequence[int],
@@ -282,6 +382,19 @@ def evaluate_by_dataset(
         metrics["count"] = len(ds_probs)
         output[ds_name] = metrics
     return output
+
+
+def resolve_guardrail_domains(dataset_names: Sequence[str]) -> List[str]:
+    preferred = ["Test", "Celeb-DF"]
+    return [name for name in preferred if name in dataset_names]
+
+
+def resolve_target_domains(dataset_names: Sequence[str]) -> List[str]:
+    preferred = ["DFDC_Curated", "WildDeepfake_Curated", "DFDC", "WildDeepfake"]
+    output = [name for name in preferred if name in dataset_names]
+    if output:
+        return output
+    return [name for name in dataset_names if "dfdc" in name.lower() or "wild" in name.lower()]
 
 
 def main() -> None:
@@ -332,6 +445,9 @@ def main() -> None:
     dataset_roots = [resolve_project_path(path) for path in args.dataset_roots]
     dataset_names = [path.name for path in dataset_roots]
     dataset_to_id = {name: idx for idx, name in enumerate(dataset_names)}
+    guardrail_domains = resolve_guardrail_domains(dataset_names)
+    target_domains = resolve_target_domains(dataset_names)
+    guardrail_min_balanced_accuracy = 0.90
 
     all_train: List[LabeledSample] = []
     all_val: List[LabeledSample] = []
@@ -401,7 +517,7 @@ def main() -> None:
 
     best_state = None
     best_threshold = float(config.decision_threshold)
-    best_metrics = None
+    best_payload = None
     history: List[dict] = []
 
     for epoch in range(1, args.epochs + 1):
@@ -463,17 +579,18 @@ def main() -> None:
         history.append(epoch_payload)
         print(json.dumps(epoch_payload, ensure_ascii=False))
 
-        score = (
-            mean_ds_bal_acc,
-            epoch_metrics["balanced_accuracy"],
-            epoch_metrics["accuracy"],
+        candidate_payload = choose_best_epoch_payload(
+            [epoch_payload] if best_payload is None else [best_payload, epoch_payload],
+            guardrail_domains=guardrail_domains,
+            guardrail_min_balanced_accuracy=guardrail_min_balanced_accuracy,
+            target_domains=target_domains,
         )
-        if best_metrics is None or score > best_metrics[0]:
+        if candidate_payload.get("epoch") == epoch:
             best_state = {key: value.detach().cpu() for key, value in model.state_dict().items()}
             best_threshold = epoch_threshold
-            best_metrics = (score, epoch_payload)
+            best_payload = candidate_payload
 
-    assert best_state is not None and best_metrics is not None
+    assert best_state is not None and best_payload is not None
     model.load_state_dict(best_state)
 
     val_probs, val_labels, val_dataset_ids = predict(
@@ -521,9 +638,12 @@ def main() -> None:
         "global_val_metrics": final_metrics,
         "per_dataset_val_metrics": final_per_dataset,
         "per_dataset_recommended_thresholds": per_domain_thresholds,
+        "guardrail_domains": guardrail_domains,
+        "target_domains": target_domains,
+        "selection_summary": best_payload.get("selection_summary", {}),
         "split_stats": split_stats,
         "history": history,
-        "best_epoch_payload": best_metrics[1],
+        "best_epoch_payload": best_payload,
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))

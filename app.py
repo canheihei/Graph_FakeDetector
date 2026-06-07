@@ -33,7 +33,7 @@ from service.facades import (
     SuggestDomainRequest,
     WorkflowError,
 )
-from service.report_gallery import ReportGalleryService
+from service.report_gallery import ReportGalleryService, describe_report_name
 from service.neo_client import graph_writer, neo4j_client
 
 
@@ -49,6 +49,7 @@ ALLOWED_PAGES = {
     "graph-iteration.html",
     "image-recognition.html",
     "visualization.html",
+    "evidence-chain-report.html",
 }
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -148,7 +149,7 @@ def _build_report_gallery_payload():
         payload["rank"] = index + 1
         payload["html_url"] = (
             url_for("serve_report_asset", report_name=report_name, asset_path="index.html")
-            if payload.get("files", {}).get("has_html")
+            if payload.get("files", {}).get("has_metrics")
             else None
         )
         payload["metrics_url"] = (
@@ -184,6 +185,256 @@ def _build_report_gallery_payload():
         "reports": reports,
         "latest": latest_report,
         "overview": overview,
+    }
+
+
+def _build_report_view_payload(report_name: str, report_dir: Path) -> dict:
+    metrics_payload = _load_json_object(report_dir / "metrics.json")
+    summary = dict(metrics_payload.get("summary", {}) or {})
+    audit_summary = dict(metrics_payload.get("audit_summary", {}) or {})
+    threshold_calibration = dict(metrics_payload.get("threshold_calibration", {}) or {})
+    records = list(metrics_payload.get("records", []) or [])
+    display = describe_report_name(report_name)
+    top_errors = [
+        record for record in records
+        if not bool(record.get("is_correct", False))
+    ][:30]
+    return {
+        "name": report_name,
+        "title": display["title"],
+        "subtitle": display["subtitle"],
+        "dataset_label": display["dataset_label"],
+        "summary": summary,
+        "audit_summary": audit_summary,
+        "threshold_calibration": threshold_calibration,
+        "top_errors": top_errors,
+        "source_metrics_url": url_for("serve_report_asset", report_name=report_name, asset_path="metrics.json"),
+        "source_predictions_url": url_for("serve_report_asset", report_name=report_name, asset_path="predictions.csv"),
+    }
+
+
+def _load_indicator_report_payload():
+    indicator_path = APP_ROOT / "reports" / "Indicators" / "indicator_report_data.json"
+    if not indicator_path.exists():
+        raise FileNotFoundError(f"Indicator report data not found: {indicator_path}")
+    payload = jsonify_or_json_loads(indicator_path.read_text(encoding="utf-8"))
+    payload.setdefault("evidence", {})
+    payload["evidence"]["evolution"] = _build_candidate_evolution_payload()
+    payload["evidence"]["new_hit_metrics"] = _build_indicator_evidence_extension()
+    scripts = list(payload.get("scripts", []))
+    scripts = [item for item in scripts if str(item.get("name", "")) != "scripts/benchmark/visualize_detect_benchmark.py"]
+    scripts.append(
+        {
+            "name": "scripts/benchmark/visualize_detect_benchmark.py",
+            "purpose": "证据链指标由 compute_audit_summary() 统一抽取，当前新增输出 joint_evidence_correct_rate 与 fake_joint_evidence_recall。",
+        }
+    )
+    payload["scripts"] = scripts
+    return payload
+
+
+def _load_json_object(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        data = jsonify_or_json_loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _compute_extended_audit_metrics_from_records(records: list[dict]) -> dict:
+    total = len(records)
+    if total <= 0:
+        return {
+            "joint_evidence_correct_rate": 0.0,
+            "fake_joint_evidence_recall": 0.0,
+        }
+    fake_total = 0
+    joint_evidence_correct_count = 0
+    fake_joint_evidence_correct_count = 0
+    for record in records:
+        evidence_count = int(record.get("evidence_count", 0) or 0)
+        truth_label = str(record.get("truth_label", "") or "")
+        predicted_label = str(record.get("predicted_label", "") or "")
+        is_correct = bool(record.get("is_correct", False))
+        if evidence_count > 0 and is_correct:
+            joint_evidence_correct_count += 1
+        if truth_label == "FAKE":
+            fake_total += 1
+            if evidence_count > 0 and predicted_label == "FAKE":
+                fake_joint_evidence_correct_count += 1
+    return {
+        "joint_evidence_correct_rate": joint_evidence_correct_count / total,
+        "fake_joint_evidence_recall": (
+            fake_joint_evidence_correct_count / fake_total if fake_total > 0 else 0.0
+        ),
+    }
+
+
+def _get_extended_audit_metrics(metrics_payload: dict) -> dict:
+    audit_summary = dict(metrics_payload.get("audit_summary", {}) or {})
+    if (
+        "joint_evidence_correct_rate" in audit_summary
+        and "fake_joint_evidence_recall" in audit_summary
+    ):
+        return {
+            "joint_evidence_correct_rate": float(audit_summary.get("joint_evidence_correct_rate", 0.0) or 0.0),
+            "fake_joint_evidence_recall": float(audit_summary.get("fake_joint_evidence_recall", 0.0) or 0.0),
+        }
+    records = list(metrics_payload.get("records", []) or [])
+    return _compute_extended_audit_metrics_from_records(records)
+
+
+def _build_indicator_evidence_extension() -> dict:
+    report_map = [
+        ("Celeb-DF", APP_ROOT / "reports" / "report_celeb_df_sample300_profile_celeb_df_evidencehit_2026-04-12" / "metrics.json"),
+        ("DFDC", APP_ROOT / "reports" / "report_dfdc_sample300_profile_dfdc_evidencehit_2026-04-12" / "metrics.json"),
+        ("WildDeepfake", APP_ROOT / "reports" / "report_wilddeepfake_sample300_profile_wilddeepfake_evidencehit_2026-04-12" / "metrics.json"),
+    ]
+    rows = []
+    joint_values = []
+    fake_joint_values = []
+    for label, metrics_path in report_map:
+        metrics_payload = _load_json_object(metrics_path)
+        if not metrics_payload:
+            continue
+        extended = _get_extended_audit_metrics(metrics_payload)
+        joint_rate = float(extended.get("joint_evidence_correct_rate", 0.0) or 0.0)
+        fake_joint_rate = float(extended.get("fake_joint_evidence_recall", 0.0) or 0.0)
+        joint_values.append(joint_rate)
+        fake_joint_values.append(fake_joint_rate)
+        rows.append(
+            {
+                "report": label,
+                "joint_evidence_correct_rate": f"{joint_rate * 100.0:.2f}%",
+                "fake_joint_evidence_recall": f"{fake_joint_rate * 100.0:.2f}%",
+            }
+        )
+    avg_joint = sum(joint_values) / len(joint_values) if joint_values else 0.0
+    avg_fake_joint = sum(fake_joint_values) / len(fake_joint_values) if fake_joint_values else 0.0
+    return {
+        "title": "新增命中率指标",
+        "script_name": "scripts/benchmark/visualize_detect_benchmark.py",
+        "script_function": "compute_audit_summary()",
+        "cards": [
+            {
+                "label": "平均联合命中率",
+                "value": f"{avg_joint * 100.0:.2f}%",
+                "tone": "indigo",
+            },
+            {
+                "label": "平均假样本联合召回",
+                "value": f"{avg_fake_joint * 100.0:.2f}%",
+                "tone": "emerald",
+            },
+        ],
+        "rows": rows,
+    }
+
+
+def _build_candidate_evolution_payload() -> dict:
+    baseline_report_map = {
+        "celeb_df": "report_celeb_df_sample300_profile_celeb_df_evidencehit_2026-04-12",
+        "celebdf": "report_celeb_df_sample300_profile_celeb_df_evidencehit_2026-04-12",
+        "dfdc": "report_dfdc_sample300_profile_dfdc_evidencehit_2026-04-12",
+        "wilddeepfake": "report_wilddeepfake_sample300_profile_wilddeepfake_evidencehit_2026-04-12",
+    }
+    baseline_metrics: dict[str, dict] = {}
+    reports_root = APP_ROOT / "reports"
+    for profile, report_name in baseline_report_map.items():
+        metrics_payload = _load_json_object(reports_root / report_name / "metrics.json")
+        audit_summary = dict(metrics_payload.get("audit_summary", {}) or {})
+        summary = dict(metrics_payload.get("summary", {}) or {})
+        if not audit_summary:
+            continue
+        baseline_metrics[profile] = {
+            "accuracy_valid": float(summary.get("accuracy_valid", 0.0) or 0.0),
+            "evidence_hit_rate": float(audit_summary.get("evidence_hit_rate", 0.0) or 0.0),
+            "fake_evidence_hit_rate": float(audit_summary.get("fake_evidence_hit_rate", 0.0) or 0.0),
+        }
+
+    candidate_payload = _load_json_object(APP_ROOT / "alignment" / "mapping_candidates.json")
+    items = list(candidate_payload.get("items", []) or [])
+    rows = []
+    for item in items:
+        benchmarks = dict(item.get("benchmarks", {}) or {})
+        benchmark_mode = None
+        benchmark_result = None
+        for mode in ("formal", "quick"):
+            candidate_result = benchmarks.get(mode)
+            if isinstance(candidate_result, dict) and candidate_result.get("audit_summary"):
+                benchmark_mode = mode
+                benchmark_result = candidate_result
+                break
+        if benchmark_result is None:
+            continue
+
+        decision_profile = str(
+            benchmark_result.get("decision_profile")
+            or (item.get("source", {}) or {}).get("decision_profile", "")
+            or ""
+        ).strip().lower()
+        baseline = baseline_metrics.get(decision_profile, {})
+        audit_summary = dict(benchmark_result.get("audit_summary", {}) or {})
+        summary = dict(benchmark_result.get("summary", {}) or {})
+        promotion = dict(item.get("promotion", {}) or {})
+        graph_candidate = dict(item.get("graph_candidate", {}) or {})
+        mapping_candidate = dict(item.get("mapping_candidate", {}) or {})
+
+        benchmark_hit_rate = float(audit_summary.get("evidence_hit_rate", 0.0) or 0.0)
+        benchmark_fake_hit_rate = float(audit_summary.get("fake_evidence_hit_rate", 0.0) or 0.0)
+        baseline_hit_rate = float(baseline.get("evidence_hit_rate", 0.0) or 0.0)
+        baseline_fake_hit_rate = float(baseline.get("fake_evidence_hit_rate", 0.0) or 0.0)
+        delta_hit_rate = benchmark_hit_rate - baseline_hit_rate
+        delta_fake_hit_rate = benchmark_fake_hit_rate - baseline_fake_hit_rate
+
+        rows.append(
+            {
+                "candidate_id": str(item.get("candidate_id", "")),
+                "mapping_key": (
+                    f"{mapping_candidate.get('detector', '')}:{mapping_candidate.get('feature', '')}"
+                ).strip(":"),
+                "specific_domain": str(graph_candidate.get("specific_domain", "") or ""),
+                "subdomain_name": str(graph_candidate.get("subdomain_name", "") or ""),
+                "decision_profile": decision_profile or "--",
+                "benchmark_mode": benchmark_mode,
+                "accuracy_valid": round(float(summary.get("accuracy_valid", 0.0) or 0.0) * 100.0, 2),
+                "baseline_hit_rate": round(baseline_hit_rate * 100.0, 2),
+                "benchmark_hit_rate": round(benchmark_hit_rate * 100.0, 2),
+                "delta_hit_rate": round(delta_hit_rate * 100.0, 2),
+                "baseline_fake_hit_rate": round(baseline_fake_hit_rate * 100.0, 2),
+                "benchmark_fake_hit_rate": round(benchmark_fake_hit_rate * 100.0, 2),
+                "delta_fake_hit_rate": round(delta_fake_hit_rate * 100.0, 2),
+                "passed": bool(benchmark_result.get("passed", False)),
+                "promoted": bool(promotion.get("promoted_at")),
+                "active_subdomain_name": str(promotion.get("active_subdomain_name", "") or ""),
+                "improved": delta_hit_rate > 0.0,
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            1 if row.get("improved") else 0,
+            float(row.get("delta_hit_rate", 0.0)),
+            float(row.get("benchmark_hit_rate", 0.0)),
+        ),
+        reverse=True,
+    )
+    improved_rows = [row for row in rows if row.get("improved")]
+    promoted_count = sum(1 for row in rows if row.get("promoted"))
+    best_gain = max((float(row.get("delta_hit_rate", 0.0)) for row in rows), default=0.0)
+    return {
+        "title": "审批进化增益",
+        "baseline": "sample300 当前证据链基线",
+        "summary_cards": [
+            {"label": "已评测候选", "value": str(len(rows)), "tone": "indigo"},
+            {"label": "Hit Rate 提升候选", "value": str(len(improved_rows)), "tone": "emerald"},
+            {"label": "最佳 Hit Rate 增益", "value": f"{best_gain:.2f}%", "tone": "amber"},
+            {"label": "已晋级候选", "value": str(promoted_count), "tone": "sky"},
+        ],
+        "rows": rows,
+        "empty_message": "当前还没有候选审批 benchmark 数据。完成 quick/formal benchmark 后，这里会自动展示审批进化后的 hit rate 增益。",
     }
 
 
@@ -660,6 +911,17 @@ def list_reports():
         app.logger.exception("[WARN] reports listing failed")
         return _error(str(exc), 500)
 
+
+@app.route("/api/indicator-report", methods=["GET"])
+def indicator_report():
+    try:
+        return _ok(_load_indicator_report_payload())
+    except FileNotFoundError as exc:
+        return _error(str(exc), 404)
+    except Exception as exc:
+        app.logger.exception("[WARN] indicator report loading failed")
+        return _error(str(exc), 500)
+
 @app.route("/api/reports/<report_name>", methods=["DELETE"])
 def delete_report(report_name: str):
     try:
@@ -690,6 +952,13 @@ def serve_report_asset(report_name: str, asset_path: str):
         asset_file = (report_dir / asset_path).resolve()
         if report_dir not in asset_file.parents and asset_file != report_dir:
             abort(404)
+        if asset_path == "index.html":
+            if not (report_dir / "metrics.json").exists():
+                abort(404)
+            return render_template(
+                "report-view.html",
+                report_view=_build_report_view_payload(report_name, report_dir),
+            )
         if not asset_file.exists():
             abort(404)
         return send_from_directory(str(report_dir), asset_path)

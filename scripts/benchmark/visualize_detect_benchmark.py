@@ -587,6 +587,8 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
             "high_score_no_evidence_rate": 0.0,
             "unresolved_subdomain_rate": 0.0,
             "avg_evidence_alignment_score": 0.0,
+            "joint_evidence_correct_rate": 0.0,
+            "fake_joint_evidence_recall": 0.0,
         }
 
     reasoning_type_count: Dict[str, int] = {}
@@ -600,6 +602,8 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
     valid_evidence_hit_count = 0
     fake_total = 0
     fake_evidence_hit_count = 0
+    joint_evidence_correct_count = 0
+    fake_joint_evidence_correct_count = 0
     high_score_no_evidence_count = 0
     evidence_requested_sum = 0
     evidence_unresolved_sum = 0
@@ -618,6 +622,8 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
         chain_len_sum += int(record.diagnostic_chain_len)
         if record.evidence_count > 0:
             evidence_hit_count += 1
+            if record.is_correct:
+                joint_evidence_correct_count += 1
         if record.predicted_label in VALID_LABELS:
             valid_count += 1
             if record.evidence_count > 0:
@@ -628,6 +634,8 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
             fake_total += 1
             if record.evidence_count > 0:
                 fake_evidence_hit_count += 1
+                if record.predicted_label == "FAKE":
+                    fake_joint_evidence_correct_count += 1
         evidence_requested_sum += max(int(record.evidence_requested), 0)
         evidence_unresolved_sum += max(int(record.evidence_unresolved), 0)
         evidence_alignment_sum += max(min(float(record.evidence_alignment_score), 1.0), 0.0)
@@ -646,6 +654,8 @@ def compute_audit_summary(records: List[PredictionRecord]) -> Dict[str, object]:
         "high_score_no_evidence_rate": safe_div(high_score_no_evidence_count, valid_count),
         "unresolved_subdomain_rate": safe_div(evidence_unresolved_sum, evidence_requested_sum),
         "avg_evidence_alignment_score": safe_div(evidence_alignment_sum, total),
+        "joint_evidence_correct_rate": safe_div(joint_evidence_correct_count, total),
+        "fake_joint_evidence_recall": safe_div(fake_joint_evidence_correct_count, fake_total),
     }
 
 
@@ -712,52 +722,52 @@ def render_html_report(
 
     cards_html = "".join(
         [
-            render_card("Total Samples", str(summary.total_samples)),
-            render_card("Accuracy (All)", format_percent(summary.accuracy_all)),
-            render_card("Valid Coverage", format_percent(safe_div(summary.valid_predictions, summary.total_samples))),
-            render_card("Errors", str(summary.error_count)),
-            render_card("F1 (Fake)", format_percent(summary.f1_fake)),
-            render_card("Balanced Accuracy", format_percent(summary.balanced_accuracy)),
+            render_card("样本总数 (Total Samples)", str(summary.total_samples)),
+            render_card("总体准确率 (Accuracy All)", format_percent(summary.accuracy_all)),
+            render_card("有效覆盖率 (Valid Coverage)", format_percent(safe_div(summary.valid_predictions, summary.total_samples))),
+            render_card("错误数 (Errors)", str(summary.error_count)),
+            render_card("F1 分数 (F1 Fake)", format_percent(summary.f1_fake)),
+            render_card("平衡准确率 (Balanced Accuracy)", format_percent(summary.balanced_accuracy)),
         ]
     )
 
     metric_rows = "".join(
         render_metric_row(name, value)
         for name, value in [
-            ("Accuracy (all)", format_percent(summary.accuracy_all)),
-            ("Accuracy (valid only)", format_percent(summary.accuracy_valid)),
-            ("Precision (Fake)", format_percent(summary.precision_fake)),
-            ("Recall (Fake)", format_percent(summary.recall_fake)),
-            ("Specificity (Real)", format_percent(summary.specificity_real)),
-            ("F1 (Fake)", format_percent(summary.f1_fake)),
-            ("Balanced Accuracy", format_percent(summary.balanced_accuracy)),
-            ("Average confidence / correct", f"{summary.avg_confidence_correct:.3f}"),
-            ("Average confidence / incorrect", f"{summary.avg_confidence_incorrect:.3f}"),
-            ("Valid predictions", str(summary.valid_predictions)),
-            ("Prediction errors", str(summary.error_count)),
+            ("总体准确率 (Accuracy All)", format_percent(summary.accuracy_all)),
+            ("有效准确率 (Accuracy Valid)", format_percent(summary.accuracy_valid)),
+            ("假样本精确率 (Precision Fake)", format_percent(summary.precision_fake)),
+            ("假样本召回率 (Recall Fake)", format_percent(summary.recall_fake)),
+            ("真实样本特异性 (Specificity Real)", format_percent(summary.specificity_real)),
+            ("F1 分数 (F1 Fake)", format_percent(summary.f1_fake)),
+            ("平衡准确率 (Balanced Accuracy)", format_percent(summary.balanced_accuracy)),
+            ("平均正确置信度 (Avg confidence / correct)", f"{summary.avg_confidence_correct:.3f}"),
+            ("平均错误置信度 (Avg confidence / incorrect)", f"{summary.avg_confidence_incorrect:.3f}"),
+            ("有效预测数 (Valid predictions)", str(summary.valid_predictions)),
+            ("预测错误数 (Prediction errors)", str(summary.error_count)),
         ]
     )
 
     class_rows = "".join(
         render_metric_row(name, value)
         for name, value in [
-            ("Fake support", str(summary.fake_support)),
-            ("Real support", str(summary.real_support)),
-            ("True Positive", str(summary.tp)),
-            ("True Negative", str(summary.tn)),
-            ("False Positive", str(summary.fp)),
-            ("False Negative", str(summary.fn)),
+            ("假样本数量 (Fake support)", str(summary.fake_support)),
+            ("真实样本数量 (Real support)", str(summary.real_support)),
+            ("真阳性 (True Positive)", str(summary.tp)),
+            ("真阴性 (True Negative)", str(summary.tn)),
+            ("假阳性 (False Positive)", str(summary.fp)),
+            ("假阴性 (False Negative)", str(summary.fn)),
         ]
     )
 
     confusion_html = f"""
     <table class="matrix">
       <thead>
-        <tr><th></th><th>Pred FAKE</th><th>Pred REAL</th></tr>
+        <tr><th></th><th>预测为 FAKE (Pred FAKE)</th><th>预测为 REAL (Pred REAL)</th></tr>
       </thead>
       <tbody>
-        <tr><th>True FAKE</th><td>{summary.tp}</td><td>{summary.fn}</td></tr>
-        <tr><th>True REAL</th><td>{summary.fp}</td><td>{summary.tn}</td></tr>
+        <tr><th>真实 FAKE (True FAKE)</th><td>{summary.tp}</td><td>{summary.fn}</td></tr>
+        <tr><th>真实 REAL (True REAL)</th><td>{summary.fp}</td><td>{summary.tn}</td></tr>
       </tbody>
     </table>
     """
@@ -774,14 +784,14 @@ def render_html_report(
         </tr>
         """
         for record in top_errors
-    ) or '<tr><td colspan="6">No misclassified samples</td></tr>'
+    ) or '<tr><td colspan="6">暂无误判样本 (No misclassified samples)</td></tr>'
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Detect Benchmark Report</title>
+  <title>数据集识别评测报告</title>
   <style>
     :root {{
       --bg: #f4f1ea;
@@ -950,19 +960,19 @@ def render_html_report(
     <div class="hero">
       <section class="panel">
         <div class="badge">Detect Benchmark</div>
-        <h1>dataset/test detection report</h1>
-        <p>Dataset: <strong>{html.escape(str(dataset_root))}</strong></p>
-        <p>Mode: <strong>{html.escape(mode)}</strong></p>
-        <p>This report summarizes fake-vs-real predictions, confusion counts, key metrics, and hard failure cases.</p>
+        <h1>数据集识别评测报告</h1>
+        <p>数据集（Dataset）: <strong>{html.escape(str(dataset_root))}</strong></p>
+        <p>模式（Mode）: <strong>{html.escape(mode)}</strong></p>
+        <p>本报告汇总真假样本预测结果、混淆矩阵、关键指标和误判样本，便于展示当前 benchmark 结果。</p>
       </section>
       <section class="panel">
-        <h2 class="section-title">Run Summary</h2>
-        <div class="pill">Total {summary.total_samples}</div>
-        <div class="pill">Valid {summary.valid_predictions}</div>
-        <div class="pill">Errors {summary.error_count}</div>
-        <div class="pill">Correct {summary.correct_predictions}</div>
+        <h2 class="section-title">运行摘要（Run Summary）</h2>
+        <div class="pill">总数（Total） {summary.total_samples}</div>
+        <div class="pill">有效（Valid） {summary.valid_predictions}</div>
+        <div class="pill">错误（Errors） {summary.error_count}</div>
+        <div class="pill">正确（Correct） {summary.correct_predictions}</div>
         <div class="footnote">
-          Accuracy(all) counts request failures in the denominator. Accuracy(valid only) uses only valid FAKE/REAL outputs.
+          总体准确率（Accuracy all）将请求失败计入分母；有效准确率（Accuracy valid）只统计有效的 FAKE/REAL 输出。
         </div>
       </section>
     </div>
@@ -973,47 +983,47 @@ def render_html_report(
 
     <section class="grid">
       <div class="panel">
-        <h2 class="section-title">Core Metrics</h2>
+        <h2 class="section-title">核心指标（Core Metrics）</h2>
         <table class="metric-table">
           <tbody>{metric_rows}</tbody>
         </table>
       </div>
       <div class="panel">
-        <h2 class="section-title">Confusion Matrix</h2>
-        <p class="section-sub">Only samples with valid FAKE/REAL predictions are counted here.</p>
+        <h2 class="section-title">混淆矩阵（Confusion Matrix）</h2>
+        <p class="section-sub">这里只统计有效 FAKE/REAL 预测样本。</p>
         {confusion_html}
       </div>
     </section>
 
     <section class="grid">
       <div class="panel">
-        <h2 class="section-title">Class Support</h2>
+        <h2 class="section-title">类别分布（Class Support）</h2>
         <table class="metric-table">
           <tbody>{class_rows}</tbody>
         </table>
       </div>
       <div class="panel">
-        <h2 class="section-title">Confidence Histogram</h2>
-        <p class="section-sub">Binned by 0.1 confidence intervals, split by correct vs incorrect predictions.</p>
-        <h3 class="section-sub">Correct Predictions</h3>
+        <h2 class="section-title">置信度分布（Confidence Histogram）</h2>
+        <p class="section-sub">按 0.1 置信度区间分桶，区分预测正确与预测错误样本。</p>
+        <h3 class="section-sub">预测正确（Correct Predictions）</h3>
         {render_histogram_bars(correct_hist, bad=False)}
-        <h3 class="section-sub" style="margin-top:16px;">Incorrect Predictions</h3>
+        <h3 class="section-sub" style="margin-top:16px;">预测错误（Incorrect Predictions）</h3>
         {render_histogram_bars(incorrect_hist, bad=True)}
       </div>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Top Misclassified Samples</h2>
-      <p class="section-sub">Rows are ordered by request failure first, then by high-confidence mistakes.</p>
+      <h2 class="section-title">误判样本（Top Misclassified Samples）</h2>
+      <p class="section-sub">优先展示请求失败样本，其次展示高置信度误判样本。</p>
       <table class="error-table">
         <thead>
           <tr>
-            <th>File</th>
-            <th>Truth</th>
-            <th>Pred</th>
-            <th>Confidence</th>
-            <th>Latency(ms)</th>
-            <th>Error</th>
+            <th>文件（File）</th>
+            <th>真实标签（Truth）</th>
+            <th>预测标签（Pred）</th>
+            <th>置信度（Confidence）</th>
+            <th>耗时（Latency ms）</th>
+            <th>错误信息（Error）</th>
           </tr>
         </thead>
         <tbody>{error_rows}</tbody>
@@ -1270,6 +1280,11 @@ def main() -> None:
         f"fake={format_percent(float(audit_summary['fake_evidence_hit_rate']))}, "
         f"high_score_no_evidence={format_percent(float(audit_summary['high_score_no_evidence_rate']))}, "
         f"unresolved={format_percent(float(audit_summary['unresolved_subdomain_rate']))}"
+    )
+    print(
+        "[RELOAD] evidence joint: "
+        f"joint_correct={format_percent(float(audit_summary['joint_evidence_correct_rate']))}, "
+        f"fake_joint_recall={format_percent(float(audit_summary['fake_joint_evidence_recall']))}"
     )
 
 

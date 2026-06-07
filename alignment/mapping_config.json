@@ -100,76 +100,52 @@
       "context_min_value": 0.73
     },
     {
-      "detector": "ViT",
-      "feature": "vit_fake_prob",
-      "subdomain_id": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a",
-      "subdomain_label": "vit_fake_probability",
-      "evidence_enabled": false,
-      "sigmoid_k": 10.0,
-      "sigmoid_x0": 0.6,
-      "weight": 0.95,
-      "activation_threshold": 0.64
-    },
-    {
-      "detector": "ViT",
-      "feature": "vit_prediction_entropy",
-      "subdomain_id": "f3a4b5c6-d7e8-4f9a-0b1c-2d3e4f5a6b7c",
-      "subdomain_label": "vit_prediction_uncertainty",
-      "evidence_enabled": false,
-      "sigmoid_k": 8.0,
-      "sigmoid_x0": 0.78,
-      "weight": 0.45,
-      "activation_threshold": 0.6
-    },
-    {
-      "detector": "EfficientNetB4",
-      "feature": "fake_probability",
-      "subdomain_id": "f195996e-53d9-4820-8987-2e0c9d8a691c",
-      "subdomain_label": "efficientnet_fake_probability",
-      "evidence_enabled": false,
-      "sigmoid_k": 10.0,
-      "sigmoid_x0": 0.6,
-      "weight": 0.95,
-      "activation_threshold": 0.64
-    },
-    {
       "detector": "CalibratedVision",
       "feature": "fake_probability",
-      "subdomain_id": "f195996e-53d9-4820-8987-2e0c9d8a691c",
-      "subdomain_label": "efficientnet_fake_probability",
-      "evidence_enabled": false,
-      "sigmoid_k": 12.0,
-      "sigmoid_x0": 0.31,
-      "weight": 1.0,
-      "activation_threshold": 0.58
+      "subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+      "subdomain_label": "高分辨率检测",
+      "sigmoid_k": 8.0,
+      "sigmoid_x0": 0.5,
+      "weight": 1,
+      "activation_threshold": 0.58,
+      "context_detector": "MetaEnsemble",
+      "context_feature": "anomaly_coverage",
+      "context_min_value": 0,
+      "evidence_enabled": true
     },
     {
       "detector": "MetaEnsemble",
       "feature": "weighted_ensemble_score",
-      "subdomain_id": "87a1540f-c033-40c8-a6f7-f8b5d3595b20",
-      "subdomain_label": "ensemble_consensus_risk",
-      "evidence_enabled": false,
-      "sigmoid_k": 10.0,
-      "sigmoid_x0": 0.58,
-      "weight": 1.0,
-      "activation_threshold": 0.62
+      "subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+      "subdomain_label": "加权异常得分",
+      "sigmoid_k": 8.0,
+      "sigmoid_x0": 0.5,
+      "weight": 1,
+      "activation_threshold": 0.62,
+      "context_detector": "FFTDetector",
+      "context_feature": "high_freq_energy",
+      "context_min_value": 0,
+      "evidence_enabled": true
     },
     {
       "detector": "MetaEnsemble",
       "feature": "max_anomaly_score",
-      "subdomain_id": "e84e9cda-8063-4b76-8b88-ce9e876e357d",
-      "subdomain_label": "peak_anomaly_signal",
-      "evidence_enabled": false,
+      "subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+      "subdomain_label": "最大异常得分",
       "sigmoid_k": 8.0,
-      "sigmoid_x0": 0.65,
+      "sigmoid_x0": 0.5,
       "weight": 0.75,
-      "activation_threshold": 0.6
+      "activation_threshold": 0.6,
+      "context_detector": "FFTDetector",
+      "context_feature": "patch_inconsistency",
+      "context_min_value": 0,
+      "evidence_enabled": true
     },
     {
       "detector": "MetaEnsemble",
       "feature": "anomaly_coverage",
-      "subdomain_id": "040ff57d-f057-4e8e-9e45-6be9169b154e",
-      "subdomain_label": "anomaly_coverage_signal",
+      "subdomain_id": "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+      "subdomain_label": "五官不对称异常",
       "evidence_enabled": false,
       "sigmoid_k": 10.0,
       "sigmoid_x0": 0.5,
@@ -179,13 +155,16 @@
     {
       "detector": "MetaEnsemble",
       "feature": "detector_agreement",
-      "subdomain_id": "87a1540f-c033-40c8-a6f7-f8b5d3595b20",
-      "subdomain_label": "ensemble_consensus_risk",
-      "evidence_enabled": false,
+      "subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+      "subdomain_label": "检测器一致性",
       "sigmoid_k": 8.0,
-      "sigmoid_x0": 0.6,
+      "sigmoid_x0": 0.5,
       "weight": 0.35,
-      "activation_threshold": 0.55
+      "activation_threshold": 0.55,
+      "context_detector": "",
+      "context_feature": "",
+      "context_min_value": 0.0,
+      "evidence_enabled": true
     }
   ]
 }

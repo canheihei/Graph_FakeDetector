@@ -1,4 +1,5 @@
 from service.candidate_generation import (
+    _build_candidate_item,
     build_candidate_items_from_llm_payload,
     build_focus_features,
     sanitize_candidate_alternative,
@@ -120,3 +121,27 @@ def test_sanitize_candidate_alternative_clears_unknown_context_detector():
     assert alternative["context_detector"] == ""
     assert alternative["context_feature"] == ""
     assert alternative["context_min_value"] == 0.0
+
+
+def test_build_candidate_item_includes_created_at_timestamp():
+    item = _build_candidate_item(
+        focus_feature={
+            "detector": "FFTDetector",
+            "feature": "patch_inconsistency",
+            "status": "blocked_by_threshold",
+        },
+        alternative={
+            "main_domain": "域泛化",
+            "specific_domain": "后处理痕迹域",
+            "subdomain_name": "边界融合不连续",
+            "canonical_name": "boundary_blending_discontinuity",
+            "describe": "边界区域存在不连续融合痕迹。",
+        },
+        source={"sample_name": "sample_a.png"},
+        sample_name="sample_a.png",
+        rank=1,
+    )
+
+    assert isinstance(item["created_at"], str)
+    assert "T" in item["created_at"]
+    assert item["created_at"].endswith("+00:00")

@@ -15,7 +15,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # LLM endpoint
 ALI_API_KEY = os.getenv("ALI_API_KEY", "")
 ALI_BASE_URL = os.getenv("ALI_BASE_URL", "https://api.moonshot.cn/v1")
-# MAX_WORKERS = multiprocessing.cpu_count()
 MAX_WORKERS = max(1, multiprocessing.cpu_count() - 2)
 
 # Neo4j

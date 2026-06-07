@@ -83,22 +83,22 @@
                     </div>
 
                     <div class="bg-white border border-t-0 border-gray-200 rounded-b-lg p-6 space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="flex items-center text-md font-semibold text-gray-800 mb-3">
-                                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    激活图谱证据域
+                        <div id="verdictSummaryBox" class="rounded-xl border border-indigo-100 bg-indigo-50 p-5"></div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6">
+                            <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                <h4 class="flex items-center text-md font-semibold text-gray-900 mb-3">
+                                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    为什么这样判
                                 </h4>
-                                <ul id="evidenceList" class="space-y-2 text-sm text-gray-600 bg-indigo-50 p-3 rounded-lg"></ul>
+                                <ul id="topReasonsList" class="space-y-3 text-sm text-gray-700"></ul>
                             </div>
-                            <div>
-                                <h4 class="flex items-center text-md font-semibold text-gray-800 mb-3">
-                                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M17.636 19.364l-.707-.707M12 21v-1M6.364 19.364l.707-.707M3 12h1M6.364 4.636l.707.707"></path></svg>
-                                    核心推理依据
-                                </h4>
-                                <ul id="reasoningList" class="space-y-2 text-sm text-gray-600 bg-gray-100 p-3 rounded-lg"></ul>
-                            </div>
+                            <div id="reviewGuidanceBox" class="rounded-xl border border-amber-200 bg-amber-50 p-5"></div>
                         </div>
+
+                        <div id="decisionPathBox" class="rounded-xl border border-gray-200 bg-gray-50 p-5"></div>
+
+                        <div id="tracePanelsBox" class="space-y-4"></div>
 
                         <!-- FFT 频谱图可视化 -->
                         <div id="fftVisualization" class="hidden">
@@ -129,14 +129,6 @@
                             </div>
                         </div>
 
-                         <div>
-                             <h4 class="flex items-center text-md font-semibold text-gray-800 mb-3">
-                                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                完整推理证据链
-                            </h4>
-                            <div id="evidenceChainBox" class="space-y-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                            </div>
-                        </div>
                     </div>
                 </div> </div>
         </section>
@@ -224,6 +216,7 @@ window.currentDetectResult = null;
 window.currentDetectFileName = "";
 window.candidateRows = [];
 window.candidateSelectionByGroup = {};
+window.promotedGroupExpandState = {};
 let candidateProgressTimer = null;
 
 // 用于创建一个看起来复杂的流程步骤 UI
@@ -279,6 +272,264 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function formatCandidateTime(value) {
+    if (!value) return '--';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+    return new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Shanghai'
+    }).format(date).replace(/\//g, '-');
+}
+
+function formatRelativeTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const diffMs = Date.now() - date.getTime();
+    const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+    if (diffSec < 60) return '刚刚';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} 分钟前`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} 小时前`;
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 30) return `${diffDay} 天前`;
+    const diffMonth = Math.floor(diffDay / 30);
+    if (diffMonth < 12) return `${diffMonth} 个月前`;
+    return `${Math.floor(diffMonth / 12)} 年前`;
+}
+
+function formatCandidateTimeMeta(value, prefix) {
+    const absolute = formatCandidateTime(value);
+    const relative = formatRelativeTime(value);
+    if (!value || absolute === '--') {
+        return '';
+    }
+    return `
+        <div class="text-xs text-gray-500">${prefix} ${escapeHtml(absolute)}</div>
+        <div class="text-xs text-gray-400">${escapeHtml(relative)}</div>
+    `;
+}
+
+function getPromotedGroupState(groupId) {
+    return Boolean(window.promotedGroupExpandState[groupId]);
+}
+
+function togglePromotedGroupDetails(groupId) {
+    window.promotedGroupExpandState[groupId] = !getPromotedGroupState(groupId);
+    renderCandidateRows(window.candidateRows);
+}
+
+function formatPercent(value) {
+    const numeric = Number(value || 0);
+    return `${(numeric * 100).toFixed(1)}%`;
+}
+
+function openTracePanel(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.open = true;
+    panel.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function renderExplainSummary(data) {
+    const explain = data.explain_summary || {};
+    const verdict = explain.verdict_summary || {};
+    const verdictSummaryBox = document.getElementById('verdictSummaryBox');
+    const topReasonsList = document.getElementById('topReasonsList');
+    const reviewGuidanceBox = document.getElementById('reviewGuidanceBox');
+    const decisionPathBox = document.getElementById('decisionPathBox');
+    const tracePanelsBox = document.getElementById('tracePanelsBox');
+    const topReasons = Array.isArray(explain.top_reasons) && explain.top_reasons.length > 0
+        ? explain.top_reasons
+        : (data.reasoning?.explanations || []).slice(0, 3);
+    const reviewSummary = explain.review_summary || {};
+    const decisionPath = explain.decision_path || {};
+    const tracePanels = explain.trace_panels || {};
+    const traceDecision = tracePanels['决策与风险'] || {};
+    const traceChain = Array.isArray(tracePanels['详细审计记录']) ? tracePanels['详细审计记录'] : (data.diagnostic_chain || []);
+    const traceModel = Array.isArray(tracePanels['模型证据']) ? tracePanels['模型证据'] : [];
+    const traceGraph = Array.isArray(tracePanels['图谱证据']) ? tracePanels['图谱证据'] : [];
+
+    verdictSummaryBox.innerHTML = `
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <div class="inline-flex items-center px-3 py-1 rounded-full bg-white border border-indigo-200 text-indigo-700 text-xs font-semibold tracking-wide uppercase">
+                    结果摘要
+                </div>
+                <h4 class="mt-3 text-2xl font-bold text-gray-900">${escapeHtml(verdict.title || '已完成分析')}</h4>
+                <p class="mt-2 text-sm text-gray-700 leading-6">${escapeHtml(verdict.short_reason || '系统已完成当前样本分析，并生成解释摘要。')}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700">置信度 ${escapeHtml(verdict.confidence_text || formatPercent(data.confidence || 0))}</span>
+                <span class="px-3 py-2 rounded-lg ${reviewSummary.needs_review ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'} text-sm font-medium">${escapeHtml(verdict.review_badge || (reviewSummary.needs_review ? '建议人工复核' : '结果稳定'))}</span>
+                <span class="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700">风险等级 ${escapeHtml(verdict.risk_level || data.risk_level || 'none')}</span>
+            </div>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+            <button type="button" onclick="openTracePanel('traceDecisionPanel')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">查看为什么这样判</button>
+            <button type="button" onclick="openTracePanel('traceAuditPanel')" class="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">查看详细依据</button>
+        </div>
+    `;
+
+    topReasonsList.innerHTML = topReasons.map((reason, index) => `
+        <li class="flex items-start gap-3">
+            <span class="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">${index + 1}</span>
+            <span class="flex-1 leading-6">${escapeHtml(reason)}</span>
+        </li>
+    `).join('');
+
+    reviewGuidanceBox.innerHTML = `
+        <div class="flex items-center justify-between gap-3">
+            <h4 class="text-md font-semibold text-amber-900">人工复核建议</h4>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold ${reviewSummary.needs_review ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}">${reviewSummary.needs_review ? '建议复核' : '当前无需复核'}</span>
+        </div>
+        <div class="mt-3 space-y-2 text-sm text-amber-900">
+            ${(reviewSummary.review_reasons_human || ['当前未触发高风险复核条件。']).map(item => `<p>${escapeHtml(item)}</p>`).join('')}
+        </div>
+        <div class="mt-4">
+            <h5 class="text-xs font-semibold uppercase tracking-wider text-amber-700">复核重点</h5>
+            <ul class="mt-2 space-y-2 text-sm text-amber-900">
+                ${((reviewSummary.reviewer_focus && reviewSummary.reviewer_focus.length > 0) ? reviewSummary.reviewer_focus : ['可优先查看下方模型证据、图谱证据和完整追溯记录。']).map(item => `<li class="flex items-start gap-2"><span class="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500"></span><span>${escapeHtml(item)}</span></li>`).join('')}
+            </ul>
+        </div>
+    `;
+
+    const decisionSteps = Array.isArray(decisionPath.steps) && decisionPath.steps.length > 0
+        ? decisionPath.steps
+        : ['输入图像', '系统完成分析', '生成当前结论'];
+    decisionPathBox.innerHTML = `
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <h4 class="text-md font-semibold text-gray-900">一句话决策路径</h4>
+                <p class="mt-2 text-sm text-gray-700 leading-6">${escapeHtml(decisionPath.summary || '系统已输出当前结论，并保留完整审计链。')}</p>
+            </div>
+            <span class="px-3 py-2 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">${escapeHtml(decisionPath.reasoning_type || data.reasoning_type || 'diagnostic')}</span>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+            ${decisionSteps.map((step, index) => `
+                <span class="px-3 py-2 rounded-lg ${index === decisionSteps.length - 1 ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-700'} text-sm font-medium">${escapeHtml(step)}</span>
+                ${index < decisionSteps.length - 1 ? '<span class="text-indigo-400">→</span>' : ''}
+            `).join('')}
+        </div>
+    `;
+
+    tracePanelsBox.innerHTML = `
+        <details id="traceModelPanel" class="rounded-xl border border-gray-200 bg-white p-4" open>
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+                <div>
+                    <h4 class="text-md font-semibold text-gray-900">模型证据</h4>
+                    <p class="mt-1 text-sm text-gray-500">展示最主要的检测器异常信号与核心推理依据。</p>
+                </div>
+                <span class="text-xs font-semibold text-indigo-600">展开</span>
+            </summary>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="rounded-lg bg-indigo-50 p-4">
+                    <h5 class="text-sm font-semibold text-indigo-900 mb-3">高权重检测信号</h5>
+                    <div class="space-y-3">
+                        ${traceModel.length > 0 ? traceModel.map(item => `
+                            <div class="rounded-lg bg-white border border-indigo-100 p-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-medium text-gray-800">${escapeHtml(item.name)}</span>
+                                    <span class="text-xs text-indigo-700 font-semibold">score ${escapeHtml(item.score)}</span>
+                                </div>
+                                <div class="mt-1 text-xs text-gray-500">权重 ${escapeHtml(item.weight)}</div>
+                            </div>
+                        `).join('') : '<div class="text-sm text-gray-500">当前没有可展示的模型信号。</div>'}
+                    </div>
+                </div>
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3">核心推理依据</h5>
+                    <ul id="reasoningList" class="space-y-2 text-sm text-gray-600"></ul>
+                </div>
+            </div>
+        </details>
+        <details id="traceGraphPanel" class="rounded-xl border border-gray-200 bg-white p-4">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+                <div>
+                    <h4 class="text-md font-semibold text-gray-900">图谱证据</h4>
+                    <p class="mt-1 text-sm text-gray-500">展示命中的子域、所属语义域与证据链。</p>
+                </div>
+                <span class="text-xs font-semibold text-indigo-600">展开</span>
+            </summary>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="rounded-lg bg-indigo-50 p-4">
+                    <h5 class="text-sm font-semibold text-indigo-900 mb-3">激活图谱证据域</h5>
+                    <ul id="evidenceList" class="space-y-2 text-sm text-gray-600"></ul>
+                </div>
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3">证据链路径</h5>
+                    <div id="evidenceChainBox" class="space-y-3 text-sm text-gray-700"></div>
+                </div>
+            </div>
+            ${traceGraph.length > 0 ? `
+                <div class="mt-4 rounded-lg bg-white border border-gray-200 p-4">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3">摘要命中</h5>
+                    <div class="flex flex-wrap gap-2">
+                        ${traceGraph.map(item => `<span class="px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-100">${escapeHtml(item.subdomain)} · ${escapeHtml(item.specific_domain)}</span>`).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </details>
+        <details id="traceDecisionPanel" class="rounded-xl border border-gray-200 bg-white p-4">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+                <div>
+                    <h4 class="text-md font-semibold text-gray-900">决策与风险</h4>
+                    <p class="mt-1 text-sm text-gray-500">展示阈值、边界距离和当前风险标记。</p>
+                </div>
+                <span class="text-xs font-semibold text-indigo-600">展开</span>
+            </summary>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                    <div class="text-xs uppercase tracking-wider text-gray-500">决策分数</div>
+                    <div class="mt-2 text-xl font-bold text-gray-900">${escapeHtml(traceDecision.fake_score ?? '--')}</div>
+                </div>
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                    <div class="text-xs uppercase tracking-wider text-gray-500">当前阈值</div>
+                    <div class="mt-2 text-xl font-bold text-gray-900">${escapeHtml(traceDecision.threshold ?? '--')}</div>
+                </div>
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                    <div class="text-xs uppercase tracking-wider text-gray-500">边界距离</div>
+                    <div class="mt-2 text-xl font-bold text-gray-900">${escapeHtml(traceDecision.margin ?? '--')}</div>
+                </div>
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                    <div class="text-xs uppercase tracking-wider text-gray-500">图谱影响权重</div>
+                    <div class="mt-2 text-xl font-bold text-gray-900">${escapeHtml(traceDecision.graph_influence_weight ?? '--')}</div>
+                </div>
+            </div>
+        </details>
+        <details id="traceAuditPanel" class="rounded-xl border border-gray-200 bg-white p-4">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+                <div>
+                    <h4 class="text-md font-semibold text-gray-900">详细审计记录</h4>
+                    <p class="mt-1 text-sm text-gray-500">保留原始诊断链与审计字段，可继续查看详细依据。</p>
+                </div>
+                <span class="text-xs font-semibold text-indigo-600">展开</span>
+            </summary>
+            <div class="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-4">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <span class="px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-semibold text-gray-600">reasoning_type ${escapeHtml(data.reasoning_type || 'unknown')}</span>
+                    <span class="px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-semibold text-gray-600">risk_level ${escapeHtml(data.risk_level || 'none')}</span>
+                    <span class="px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-semibold text-gray-600">needs_review ${escapeHtml(String(Boolean(data.needs_review)))}</span>
+                </div>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    ${traceChain.length > 0 ? traceChain.map(item => `<li class="rounded-lg bg-white border border-gray-200 px-3 py-2">${escapeHtml(item)}</li>`).join('') : '<li class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-gray-500">当前没有额外诊断链。</li>'}
+                </ul>
+            </div>
+        </details>
+    `;
 }
 
 function setCandidateStatus(message, isError = false) {
@@ -406,7 +657,7 @@ function getSelectedCandidateId(group) {
 function isCandidateSelectable(group, item) {
     const state = getGroupState(group);
     if (state === 'promoted') {
-        return false;
+        return true;
     }
     if (state === 'benchmarked') {
         return Boolean((item.promotion || {}).eligible);
@@ -414,8 +665,13 @@ function isCandidateSelectable(group, item) {
     return true;
 }
 
-function selectCandidateOption(groupId, candidateId) {
+function chooseCandidateGroup(groupId, candidateId) {
     window.candidateSelectionByGroup[groupId] = candidateId;
+    renderCandidateRows(window.candidateRows);
+}
+
+function selectCandidateOption(groupId, candidateId) {
+    chooseCandidateGroup(groupId, candidateId);
 }
 
 function renderCandidateRows(items) {
@@ -444,6 +700,14 @@ function renderCandidateRows(items) {
                 ${groups.map(group => {
                     const selectedId = getSelectedCandidateId(group);
                     const state = getGroupState(group);
+                    const promotedItem = group.items.find(item => item.status === 'promoted') || group.items[0] || {};
+                    const promotion = promotedItem.promotion || {};
+                    const activeSpecific = promotion.active_specific_domain || (promotedItem.graph_candidate || {}).specific_domain || '未知域';
+                    const activeSubdomain = promotion.active_subdomain_name || (promotedItem.graph_candidate || {}).subdomain_name || '未知子域';
+                    const createdAt = promotedItem.created_at || '';
+                    const promotedAt = promotion.promoted_at || '';
+                    const isPromotedExpanded = state === 'promoted' ? getPromotedGroupState(group.id) : true;
+                    const groupSelected = Boolean(selectedId);
                     return `
                         <div class="candidate-group border border-rose-200 rounded-xl p-4 bg-white" data-group-id="${escapeHtml(group.id)}" data-group-state="${state}">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
@@ -453,12 +717,42 @@ function renderCandidateRows(items) {
                                 </div>
                                 <span class="text-xs px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700">${getGroupStatusText(group)}</span>
                             </div>
-                            <div class="space-y-3">
+                            ${state === 'promoted' ? `
+                                <div class="mb-4 rounded-xl border border-green-200 bg-green-50 p-4">
+                                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                                        <div class="space-y-2">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="text-sm font-semibold text-green-900">${escapeHtml(group.detector)}:${escapeHtml(group.feature)}</span>
+                                                <span class="px-2 py-1 rounded-full bg-white border border-green-200 text-xs text-green-700 font-medium">已晋级</span>
+                                            </div>
+                                            <div class="text-sm text-gray-700">正式域：${escapeHtml(activeSpecific)} / ${escapeHtml(activeSubdomain)}</div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>${formatCandidateTimeMeta(createdAt, '生成于')}</div>
+                                                <div>${formatCandidateTimeMeta(promotedAt, '晋级于')}</div>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button type="button"
+                                                    onclick="chooseCandidateGroup('${escapeHtml(group.id)}', '${escapeHtml(promotedItem.candidate_id || '')}')"
+                                                    class="px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${groupSelected ? 'bg-green-700 border-green-700 text-white hover:bg-green-800' : 'bg-white border-green-200 text-green-800 hover:bg-green-100'}">
+                                                ${groupSelected ? '已选中该组' : '选中该组'}
+                                            </button>
+                                            <button type="button"
+                                                    onclick="togglePromotedGroupDetails('${escapeHtml(group.id)}')"
+                                                    class="px-4 py-2 rounded-lg bg-white border border-green-200 text-green-800 text-sm font-medium hover:bg-green-100 transition-colors">
+                                                ${isPromotedExpanded ? '收起详情' : '查看详情'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <div class="space-y-3 ${state === 'promoted' && !isPromotedExpanded ? 'hidden' : ''}">
                                 ${group.items.map(item => {
                                     const graph = item.graph_candidate || {};
                                     const mapping = item.mapping_candidate || {};
                                     const llm = item.llm || {};
                                     const benchmarks = item.benchmarks || {};
+                                    const promotionItem = item.promotion || {};
                                     const itemId = escapeHtml(item.candidate_id);
                                     const checked = item.candidate_id === selectedId ? 'checked' : '';
                                     const selectable = isCandidateSelectable(group, item);
@@ -477,7 +771,7 @@ function renderCandidateRows(items) {
                                                        data-group-id="${escapeHtml(group.id)}"
                                                        ${checked}
                                                        ${disabled}
-                                                       onchange="selectCandidateOption('${escapeHtml(group.id)}', '${itemId}')">
+                                                       onchange="chooseCandidateGroup('${escapeHtml(group.id)}', '${itemId}')">
                                                 <div class="flex-1 space-y-3">
                                                     <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                                         <span>LLM rank: ${escapeHtml(llm.rank ?? '')}</span>
@@ -485,6 +779,16 @@ function renderCandidateRows(items) {
                                                         <span>Quick: ${quick}</span>
                                                         <span>Formal: ${formal}</span>
                                                         <span>${eligible}</span>
+                                                    </div>
+                                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-500">
+                                                        <div class="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                                                            ${formatCandidateTimeMeta(item.created_at, '生成于')}
+                                                        </div>
+                                                        ${(promotionItem.promoted_at || state === 'promoted') ? `
+                                                            <div class="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                                                                ${formatCandidateTimeMeta(promotionItem.promoted_at, '晋级于')}
+                                                            </div>
+                                                        ` : ''}
                                                     </div>
                                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                         <input id="specific_${itemId}" class="candidate-input p-2 border rounded text-sm" value="${escapeHtml(graph.specific_domain || '')}" placeholder="SpecificDomain" ${readonly}>
@@ -528,6 +832,11 @@ async function loadCandidateMappings() {
         }
         window.candidateRows = payload.items || [];
         window.candidateSelectionByGroup = {};
+        window.promotedGroupExpandState = Object.fromEntries(
+            groupCandidateRows(window.candidateRows)
+                .filter(group => getGroupState(group) === 'promoted')
+                .map(group => [group.id, Boolean(window.promotedGroupExpandState[group.id])])
+        );
         renderCandidateRows(window.candidateRows);
         setCandidateStatus(`已加载 ${window.candidateRows.length} 条候选。`);
     } catch (err) {
@@ -807,8 +1116,9 @@ fileInput.addEventListener("change", async function (event) {
 
     // === 渲染最终结果 ===
     // 1. 填充数据
-    document.getElementById('resultLabel').textContent = data.label || "未知结果";
-    document.getElementById('resultConfidence').textContent = data.confidence || "N/A";
+    const explain = data.explain_summary || {};
+    document.getElementById('resultLabel').textContent = explain.verdict_summary?.title || data.label || "未知结果";
+    document.getElementById('resultConfidence').textContent = explain.verdict_summary?.confidence_text || formatPercent(data.confidence || 0);
 
     // 根据结果改变 Banner 颜色 (可选，例如真实为绿，伪造为红)
     const verdictBanner = document.getElementById('verdictBanner');
@@ -826,13 +1136,19 @@ fileInput.addEventListener("change", async function (event) {
         verdictBanner.querySelector('span').classList.replace('text-indigo-100', 'text-amber-100');
     }
 
+    renderExplainSummary(data);
 
     // 2. 渲染列表
     const evidenceList = document.getElementById('evidenceList');
-    evidenceList.innerHTML = data.evidence.map(e => `<li class="flex justify-between"><span>${e.sub_domain.name} <span class="text-xs text-gray-500">(${e.specific_domain.name})</span></span> <span class="font-mono text-indigo-700">置信度 ${(e.confidence * 100).toFixed(1)}%</span></li>`).join('');
+    evidenceList.innerHTML = Array.isArray(data.evidence) && data.evidence.length > 0
+        ? data.evidence.map(e => `<li class="flex justify-between gap-3"><span>${escapeHtml(e.sub_domain.name)} <span class="text-xs text-gray-500">(${escapeHtml(e.specific_domain.name)})</span></span> <span class="font-mono text-indigo-700">置信度 ${(e.confidence * 100).toFixed(1)}%</span></li>`).join('')
+        : '<li class="text-gray-500">当前样本未命中稳定图谱证据。</li>';
 
     const reasoningList = document.getElementById('reasoningList');
-    reasoningList.innerHTML = data.reasoning.explanations.map(exp => `<li class="flex items-start"><svg class="h-4 w-4 text-indigo-400 mt-1 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>${exp}</span></li>`).join('');
+    const reasoningExplanations = Array.isArray(data.reasoning?.explanations) ? data.reasoning.explanations : [];
+    reasoningList.innerHTML = reasoningExplanations.length > 0
+        ? reasoningExplanations.map(exp => `<li class="flex items-start"><svg class="h-4 w-4 text-indigo-400 mt-1 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>${escapeHtml(exp)}</span></li>`).join('')
+        : '<li class="text-gray-500">当前没有额外的文字推理说明。</li>';
 
     const evidenceChainBox = document.getElementById('evidenceChainBox');
     if (Array.isArray(data.evidence) && data.evidence.length > 0) {

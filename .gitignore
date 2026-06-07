@@ -8,7 +8,7 @@ node_modules/
 .env.*.local
 .codex*
 .winscp*
-AGENTS*.md
+AGENTS.md
 paraphrase-multilingual-MiniLM-L12-v2/
 test/
 uploads/
@@ -73,6 +73,14 @@ Thumbs.db
 *.ckpt
 *.h5
 *.pb
+
+# Local backups and junk
+root-backup/
+docx_extracted/
+draft.docx
+*smoke_backup_*.json
+README-BACKUP.md
+scripts/docs/
 
 # Temporary files
 *.tmp

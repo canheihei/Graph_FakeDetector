@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Iterable, List
 
 from service.llm_chain import call_detect_candidate_llm, extract_candidate_feature_groups
@@ -214,6 +215,7 @@ def _build_candidate_item(
             mapping_candidate["detector"],
             mapping_candidate["feature"],
         ),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
         "approval_state": "draft",
         "source": source,

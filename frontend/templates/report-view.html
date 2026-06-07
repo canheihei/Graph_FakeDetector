@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{ report_view.title }} - GraphXFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['IBM Plex Mono', 'monospace']
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="min-h-full bg-gray-50 text-gray-800 font-sans">
+{% set summary = report_view.summary %}
+{% set audit = report_view.audit_summary %}
+{% set calibration = report_view.threshold_calibration %}
+<main class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <header class="bg-white rounded-3xl border border-gray-100 shadow-md p-8">
+            <div class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-semibold tracking-wide uppercase">
+                数据集识别报告（Benchmark Report）
+            </div>
+            <h1 class="mt-5 text-4xl font-extrabold tracking-tight text-gray-900">{{ report_view.title }}</h1>
+            <p class="mt-3 text-lg text-gray-500">{{ report_view.subtitle }}</p>
+            <div class="mt-6 flex flex-wrap gap-3 text-sm">
+                <span class="inline-flex items-center px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600">
+                    {{ report_view.dataset_label }}
+                </span>
+                <a href="{{ report_view.source_metrics_url }}" target="_blank" rel="noreferrer"
+                   class="inline-flex items-center px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-indigo-200 hover:text-indigo-600 transition-colors">
+                    指标原始数据（metrics.json）
+                </a>
+                <a href="{{ report_view.source_predictions_url }}" target="_blank" rel="noreferrer"
+                   class="inline-flex items-center px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-indigo-200 hover:text-indigo-600 transition-colors">
+                    预测明细（predictions.csv）
+                </a>
+            </div>
+        </header>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.18em] text-gray-500">有效准确率（Accuracy valid）</div>
+                <div class="mt-4 text-3xl font-extrabold text-gray-900">{{ '%.2f'|format((summary.get('accuracy_valid', 0) * 100)) }}%</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.18em] text-gray-500">平衡准确率（Balanced Accuracy）</div>
+                <div class="mt-4 text-3xl font-extrabold text-gray-900">{{ '%.2f'|format((summary.get('balanced_accuracy', 0) * 100)) }}%</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.18em] text-gray-500">样本总数（Total Samples）</div>
+                <div class="mt-4 text-3xl font-extrabold text-gray-900">{{ summary.get('total_samples', 0) }}</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div class="text-xs uppercase tracking-[0.18em] text-gray-500">有效覆盖率（Valid Coverage）</div>
+                <div class="mt-4 text-3xl font-extrabold text-gray-900">
+                    {% if summary.get('total_samples', 0) %}
+                    {{ '%.2f'|format((summary.get('valid_predictions', 0) / summary.get('total_samples', 1) * 100)) }}%
+                    {% else %}
+                    0.00%
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
+            <div class="rounded-3xl border border-gray-100 bg-white shadow-md p-7">
+                <h2 class="text-2xl font-bold text-gray-900">核心指标（Core Metrics）</h2>
+                <div class="mt-6 overflow-x-auto rounded-2xl border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <tbody class="divide-y divide-gray-200">
+                        <tr><td class="px-4 py-3 text-gray-500">准确率（Accuracy all）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('accuracy_all', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">有效准确率（Accuracy valid）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('accuracy_valid', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">假样本精确率（Precision Fake）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('precision_fake', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">假样本召回率（Recall Fake）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('recall_fake', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">真实样本特异性（Specificity Real）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('specificity_real', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">F1 分数（F1 Fake）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.2f'|format((summary.get('f1_fake', 0) * 100)) }}%</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">平均正确置信度（Avg confidence / correct）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.3f'|format(summary.get('avg_confidence_correct', 0)) }}</td></tr>
+                        <tr><td class="px-4 py-3 text-gray-500">平均错误置信度（Avg confidence / incorrect）</td><td class="px-4 py-3 text-right font-semibold">{{ '%.3f'|format(summary.get('avg_confidence_incorrect', 0)) }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded-3xl border border-gray-100 bg-white shadow-md p-7">
+                <h2 class="text-2xl font-bold text-gray-900">混淆矩阵（Confusion Matrix）</h2>
+                <div class="mt-6 grid grid-cols-2 gap-4">
+                    <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-5">
+                        <div class="text-xs text-emerald-700">真阳性（TP）</div>
+                        <div class="mt-2 text-3xl font-extrabold text-emerald-900">{{ summary.get('tp', 0) }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-sky-50 border border-sky-100 p-5">
+                        <div class="text-xs text-sky-700">真阴性（TN）</div>
+                        <div class="mt-2 text-3xl font-extrabold text-sky-900">{{ summary.get('tn', 0) }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-amber-50 border border-amber-100 p-5">
+                        <div class="text-xs text-amber-700">假阳性（FP）</div>
+                        <div class="mt-2 text-3xl font-extrabold text-amber-900">{{ summary.get('fp', 0) }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-rose-50 border border-rose-100 p-5">
+                        <div class="text-xs text-rose-700">假阴性（FN）</div>
+                        <div class="mt-2 text-3xl font-extrabold text-rose-900">{{ summary.get('fn', 0) }}</div>
+                    </div>
+                </div>
+                {% if calibration %}
+                <div class="mt-6 rounded-2xl bg-gray-50 border border-gray-200 p-5 text-sm">
+                    <div class="font-semibold text-gray-900">阈值校准（Threshold Calibration）</div>
+                    <div class="mt-2 text-gray-600">推荐阈值（Recommended threshold）: <span class="font-mono">{{ '%.2f'|format(calibration.get('threshold', 0)) }}</span></div>
+                    <div class="mt-1 text-gray-600">平均当前阈值（Average current threshold）: <span class="font-mono">{{ '%.2f'|format(calibration.get('average_current_threshold', 0)) }}</span></div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if audit %}
+        <section class="rounded-3xl border border-gray-100 bg-white shadow-md p-7">
+            <h2 class="text-2xl font-bold text-gray-900">审计与证据链指标（Audit & Evidence Metrics）</h2>
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-5">
+                    <div class="text-xs text-amber-700">命中率（Evidence Hit Rate）</div>
+                    <div class="mt-2 text-3xl font-extrabold text-amber-900">{{ '%.2f'|format((audit.get('evidence_hit_rate', 0) * 100)) }}%</div>
+                </div>
+                <div class="rounded-2xl bg-sky-50 border border-sky-100 p-5">
+                    <div class="text-xs text-sky-700">假样本命中率（Fake Evidence Hit）</div>
+                    <div class="mt-2 text-3xl font-extrabold text-sky-900">{{ '%.2f'|format((audit.get('fake_evidence_hit_rate', 0) * 100)) }}%</div>
+                </div>
+                <div class="rounded-2xl bg-rose-50 border border-rose-100 p-5">
+                    <div class="text-xs text-rose-700">高分缺证据率（High Score No Evidence）</div>
+                    <div class="mt-2 text-3xl font-extrabold text-rose-900">{{ '%.2f'|format((audit.get('high_score_no_evidence_rate', 0) * 100)) }}%</div>
+                </div>
+                <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-5">
+                    <div class="text-xs text-emerald-700">未解析子域率（Unresolved Subdomain）</div>
+                    <div class="mt-2 text-3xl font-extrabold text-emerald-900">{{ '%.2f'|format((audit.get('unresolved_subdomain_rate', 0) * 100)) }}%</div>
+                </div>
+                <div class="rounded-2xl bg-gray-50 border border-gray-200 p-5">
+                    <div class="text-xs text-gray-500">对齐分数（Alignment Score）</div>
+                    <div class="mt-2 text-3xl font-extrabold text-gray-900">{{ '%.4f'|format(audit.get('avg_evidence_alignment_score', 0)) }}</div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="rounded-3xl border border-gray-100 bg-white shadow-md p-7">
+            <h2 class="text-2xl font-bold text-gray-900">误判样本（Top Misclassified Samples）</h2>
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50 text-left uppercase tracking-[0.18em] text-gray-500 text-xs">
+                    <tr>
+                        <th class="px-4 py-4">文件（File）</th>
+                        <th class="px-4 py-4">真实标签（Truth）</th>
+                        <th class="px-4 py-4">预测标签（Pred）</th>
+                        <th class="px-4 py-4">置信度（Confidence）</th>
+                        <th class="px-4 py-4">耗时（Latency ms）</th>
+                        <th class="px-4 py-4">错误信息（Error）</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                    {% if report_view.top_errors %}
+                        {% for row in report_view.top_errors %}
+                        <tr>
+                            <td class="px-4 py-4">{{ row.get('file_name', '-') }}</td>
+                            <td class="px-4 py-4">{{ row.get('truth_label', '-') }}</td>
+                            <td class="px-4 py-4">{{ row.get('predicted_label', '-') }}</td>
+                            <td class="px-4 py-4">{{ '%.3f'|format(row.get('confidence', 0)) }}</td>
+                            <td class="px-4 py-4">{{ '%.1f'|format(row.get('latency_ms', 0)) }}</td>
+                            <td class="px-4 py-4">{{ row.get('error', '-') or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">暂无误判样本（No misclassified samples）</td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+</body>
+</html>

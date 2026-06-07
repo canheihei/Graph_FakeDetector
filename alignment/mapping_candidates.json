@@ -1,4 +1,1146 @@
 {
   "version": "1.0",
-  "items": []
+  "items": [
+    {
+      "candidate_id": "47a38ed6-1cde-4e62-a153-08247cd17028",
+      "candidate_group_id": "eb52ec83d5e7a604",
+      "status": "promoted",
+      "approval_state": "approved",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "图像分析",
+        "subdomain_name": "高分辨率检测",
+        "canonical_name": "high_resolution_detection",
+        "describe": "高分辨率图像的假概率",
+        "candidate_subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f"
+      },
+      "mapping_candidate": {
+        "detector": "CalibratedVision",
+        "feature": "fake_probability",
+        "subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+        "subdomain_label": "高分辨率检测",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 1,
+        "activation_threshold": 0.58,
+        "context_detector": "MetaEnsemble",
+        "context_feature": "anomaly_coverage",
+        "context_min_value": 0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "检测图像分辨率异常",
+        "mapping_rationale": "高分辨率图像可能隐藏细节",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.58,
+        "weight": 1,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": {
+          "dataset_root": "/root/pycode/graph_detect/Datasets/Test",
+          "sample_per_class": 20,
+          "overlay_logs": [
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+              "active_subdomain_name": "高分辨率检测",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "异常检测",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+              "active_subdomain_name": "最大异常得分",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": true,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+              "active_subdomain_name": "加权异常得分",
+              "temporary_overlay": true
+            }
+          ],
+          "summary": {
+            "total_samples": 40,
+            "valid_predictions": 40,
+            "accuracy_valid": 0.95,
+            "balanced_accuracy": 0.95,
+            "f1_fake": 0.9500000000000001,
+            "precision_fake": 0.95,
+            "recall_fake": 0.95,
+            "specificity_real": 0.95
+          },
+          "audit_summary": {
+            "total_records": 40,
+            "reasoning_type_coverage": 1.0,
+            "diagnostic_chain_coverage": 1.0,
+            "needs_review_rate": 0.2,
+            "risk_level_distribution": {
+              "high": 3,
+              "medium": 5,
+              "none": 32
+            },
+            "reasoning_type_distribution": {
+              "anomaly_evidence": 20,
+              "counter_evidence": 20
+            },
+            "avg_diagnostic_chain_len": 4.2,
+            "evidence_hit_rate": 0.95,
+            "evidence_hit_rate_valid": 0.95,
+            "fake_evidence_hit_rate": 1.0,
+            "high_score_no_evidence_rate": 0.0,
+            "unresolved_subdomain_rate": 0.0,
+            "avg_evidence_alignment_score": 0.6557813999999998
+          },
+          "threshold_calibration": {
+            "threshold": 0.54,
+            "valid_count": 40,
+            "tp": 19,
+            "tn": 20,
+            "fp": 0,
+            "fn": 1,
+            "accuracy_valid": 0.975,
+            "balanced_accuracy": 0.975,
+            "precision_fake": 1.0,
+            "recall_fake": 0.95,
+            "specificity_real": 1.0,
+            "average_current_threshold": 0.5
+          },
+          "passed": true,
+          "decision_profile": null
+        },
+        "formal": null
+      },
+      "promotion": {
+        "eligible": true,
+        "promoted_at": "2026-04-16T14:45:07.213094+00:00",
+        "active_specific_domain": "图像分析",
+        "active_subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+        "active_subdomain_name": "高分辨率检测",
+        "last_log": {
+          "candidate_id": "47a38ed6-1cde-4e62-a153-08247cd17028",
+          "mapping_key": "CalibratedVision:fake_probability",
+          "mapping_before": {
+            "subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+            "subdomain_label": "高分辨率检测"
+          },
+          "graph_merge": {
+            "specific_domain_reused": false,
+            "specific_domain_name": "图像分析",
+            "subdomain_matched": 0,
+            "subdomain_created": 1,
+            "semantic_threshold": 0.9
+          },
+          "active_graph": {
+            "main_domain": "域泛化",
+            "specific_domain": "图像分析",
+            "specific_id": "c12dc15c-b91f-5219-9eff-39546701fada",
+            "subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+            "subdomain_name": "高分辨率检测",
+            "canonical_name": "high_resolution_detection"
+          },
+          "mapping_after": {
+            "subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+            "subdomain_label": "高分辨率检测"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "e3a84254-b549-4f24-9df4-5a52db9134d7",
+      "candidate_group_id": "eb52ec83d5e7a604",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "图像分析",
+        "subdomain_name": "异常概率检测",
+        "canonical_name": "anomaly_probability_detection",
+        "describe": "异常概率的图像分析",
+        "candidate_subdomain_id": "c35edca5-3004-4427-abbe-d6958f690bf4"
+      },
+      "mapping_candidate": {
+        "detector": "CalibratedVision",
+        "feature": "fake_probability",
+        "subdomain_id": "c35edca5-3004-4427-abbe-d6958f690bf4",
+        "subdomain_label": "异常概率检测",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.9,
+        "activation_threshold": 0.55,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "评估图像异常概率",
+        "mapping_rationale": "异常概率高可能指示伪造",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.58,
+        "weight": 1,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "7c868879-e957-47ec-a28d-7e1496240d7a",
+      "candidate_group_id": "d88ee82e4728d762",
+      "status": "promoted",
+      "approval_state": "approved",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "异常检测",
+        "subdomain_name": "最大异常得分",
+        "canonical_name": "max_anomaly_score",
+        "describe": "五官不对称的最大异常得分",
+        "candidate_subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "max_anomaly_score",
+        "subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+        "subdomain_label": "最大异常得分",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.75,
+        "activation_threshold": 0.6,
+        "context_detector": "FFTDetector",
+        "context_feature": "patch_inconsistency",
+        "context_min_value": 0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "五官不对称的异常检测",
+        "mapping_rationale": "五官不对称可能指示伪造",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+        "current_subdomain_label": "五官不对称异常",
+        "activation_threshold": 0.6,
+        "weight": 0.75,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": {
+          "dataset_root": "/root/pycode/graph_detect/Datasets/Test",
+          "sample_per_class": 20,
+          "overlay_logs": [
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+              "active_subdomain_name": "高分辨率检测",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "异常检测",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+              "active_subdomain_name": "最大异常得分",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": true,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+              "active_subdomain_name": "加权异常得分",
+              "temporary_overlay": true
+            }
+          ],
+          "summary": {
+            "total_samples": 40,
+            "valid_predictions": 40,
+            "accuracy_valid": 0.95,
+            "balanced_accuracy": 0.95,
+            "f1_fake": 0.9500000000000001,
+            "precision_fake": 0.95,
+            "recall_fake": 0.95,
+            "specificity_real": 0.95
+          },
+          "audit_summary": {
+            "total_records": 40,
+            "reasoning_type_coverage": 1.0,
+            "diagnostic_chain_coverage": 1.0,
+            "needs_review_rate": 0.2,
+            "risk_level_distribution": {
+              "high": 3,
+              "medium": 5,
+              "none": 32
+            },
+            "reasoning_type_distribution": {
+              "anomaly_evidence": 20,
+              "counter_evidence": 20
+            },
+            "avg_diagnostic_chain_len": 4.2,
+            "evidence_hit_rate": 0.95,
+            "evidence_hit_rate_valid": 0.95,
+            "fake_evidence_hit_rate": 1.0,
+            "high_score_no_evidence_rate": 0.0,
+            "unresolved_subdomain_rate": 0.0,
+            "avg_evidence_alignment_score": 0.6557813999999998
+          },
+          "threshold_calibration": {
+            "threshold": 0.54,
+            "valid_count": 40,
+            "tp": 19,
+            "tn": 20,
+            "fp": 0,
+            "fn": 1,
+            "accuracy_valid": 0.975,
+            "balanced_accuracy": 0.975,
+            "precision_fake": 1.0,
+            "recall_fake": 0.95,
+            "specificity_real": 1.0,
+            "average_current_threshold": 0.5
+          },
+          "passed": true,
+          "decision_profile": null
+        },
+        "formal": null
+      },
+      "promotion": {
+        "eligible": true,
+        "promoted_at": "2026-04-16T14:45:07.213094+00:00",
+        "active_specific_domain": "异常检测",
+        "active_subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+        "active_subdomain_name": "最大异常得分",
+        "last_log": {
+          "candidate_id": "7c868879-e957-47ec-a28d-7e1496240d7a",
+          "mapping_key": "MetaEnsemble:max_anomaly_score",
+          "mapping_before": {
+            "subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+            "subdomain_label": "最大异常得分"
+          },
+          "graph_merge": {
+            "specific_domain_reused": false,
+            "specific_domain_name": "异常检测",
+            "subdomain_matched": 0,
+            "subdomain_created": 1,
+            "semantic_threshold": 0.9
+          },
+          "active_graph": {
+            "main_domain": "域泛化",
+            "specific_domain": "异常检测",
+            "specific_id": "437f750c-53ad-5d91-b4cf-aaf261e1a320",
+            "subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+            "subdomain_name": "最大异常得分",
+            "canonical_name": "max_anomaly_score"
+          },
+          "mapping_after": {
+            "subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+            "subdomain_label": "最大异常得分"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "53b2f674-68cd-4367-9963-52ffc206123a",
+      "candidate_group_id": "d88ee82e4728d762",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "异常检测",
+        "subdomain_name": "异常得分综合",
+        "canonical_name": "ensemble_anomaly_score",
+        "describe": "综合异常得分",
+        "candidate_subdomain_id": "889615a7-2af6-47bc-8ccc-c8b50801d7ab"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "max_anomaly_score",
+        "subdomain_id": "889615a7-2af6-47bc-8ccc-c8b50801d7ab",
+        "subdomain_label": "异常得分综合",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.7,
+        "activation_threshold": 0.58,
+        "context_detector": "AppearanceDetector",
+        "context_feature": "pose_extreme",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "综合异常得分用于检测",
+        "mapping_rationale": "综合得分高可能指示异常",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+        "current_subdomain_label": "五官不对称异常",
+        "activation_threshold": 0.6,
+        "weight": 0.75,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "b59cee9f-2cb7-4c2f-8499-5dd1bd37ca72",
+      "candidate_group_id": "a7e05a071e7d10de",
+      "status": "promoted",
+      "approval_state": "approved",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "图像分析",
+        "subdomain_name": "加权异常得分",
+        "canonical_name": "weighted_anomaly_score",
+        "describe": "加权异常得分",
+        "candidate_subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "weighted_ensemble_score",
+        "subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+        "subdomain_label": "加权异常得分",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 1,
+        "activation_threshold": 0.62,
+        "context_detector": "FFTDetector",
+        "context_feature": "high_freq_energy",
+        "context_min_value": 0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "加权得分用于检测异常",
+        "mapping_rationale": "加权得分高可能指示伪造",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.62,
+        "weight": 1,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": {
+          "dataset_root": "/root/pycode/graph_detect/Datasets/Test",
+          "sample_per_class": 20,
+          "overlay_logs": [
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "f488d959-0639-4d05-8d50-a419dbe5eb4f",
+              "active_subdomain_name": "高分辨率检测",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": false,
+              "specific_domain_name": "异常检测",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "858871f3-0c1f-4fe7-a5c1-aa4f6f4e7b46",
+              "active_subdomain_name": "最大异常得分",
+              "temporary_overlay": true
+            },
+            {
+              "cleanup_token": "benchmark-overlay-26d659be-0ca1-4efd-95b1-751343bf759d",
+              "specific_domain_reused": true,
+              "specific_domain_name": "图像分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+              "active_subdomain_name": "加权异常得分",
+              "temporary_overlay": true
+            }
+          ],
+          "summary": {
+            "total_samples": 40,
+            "valid_predictions": 40,
+            "accuracy_valid": 0.95,
+            "balanced_accuracy": 0.95,
+            "f1_fake": 0.9500000000000001,
+            "precision_fake": 0.95,
+            "recall_fake": 0.95,
+            "specificity_real": 0.95
+          },
+          "audit_summary": {
+            "total_records": 40,
+            "reasoning_type_coverage": 1.0,
+            "diagnostic_chain_coverage": 1.0,
+            "needs_review_rate": 0.2,
+            "risk_level_distribution": {
+              "high": 3,
+              "medium": 5,
+              "none": 32
+            },
+            "reasoning_type_distribution": {
+              "anomaly_evidence": 20,
+              "counter_evidence": 20
+            },
+            "avg_diagnostic_chain_len": 4.2,
+            "evidence_hit_rate": 0.95,
+            "evidence_hit_rate_valid": 0.95,
+            "fake_evidence_hit_rate": 1.0,
+            "high_score_no_evidence_rate": 0.0,
+            "unresolved_subdomain_rate": 0.0,
+            "avg_evidence_alignment_score": 0.6557813999999998
+          },
+          "threshold_calibration": {
+            "threshold": 0.54,
+            "valid_count": 40,
+            "tp": 19,
+            "tn": 20,
+            "fp": 0,
+            "fn": 1,
+            "accuracy_valid": 0.975,
+            "balanced_accuracy": 0.975,
+            "precision_fake": 1.0,
+            "recall_fake": 0.95,
+            "specificity_real": 1.0,
+            "average_current_threshold": 0.5
+          },
+          "passed": true,
+          "decision_profile": null
+        },
+        "formal": null
+      },
+      "promotion": {
+        "eligible": true,
+        "promoted_at": "2026-04-16T14:45:07.213094+00:00",
+        "active_specific_domain": "图像分析",
+        "active_subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+        "active_subdomain_name": "加权异常得分",
+        "last_log": {
+          "candidate_id": "b59cee9f-2cb7-4c2f-8499-5dd1bd37ca72",
+          "mapping_key": "MetaEnsemble:weighted_ensemble_score",
+          "mapping_before": {
+            "subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+            "subdomain_label": "加权异常得分"
+          },
+          "graph_merge": {
+            "specific_domain_reused": false,
+            "specific_domain_name": "图像分析",
+            "subdomain_matched": 0,
+            "subdomain_created": 1,
+            "semantic_threshold": 0.9
+          },
+          "active_graph": {
+            "main_domain": "域泛化",
+            "specific_domain": "图像分析",
+            "specific_id": "c12dc15c-b91f-5219-9eff-39546701fada",
+            "subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+            "subdomain_name": "加权异常得分",
+            "canonical_name": "weighted_anomaly_score"
+          },
+          "mapping_after": {
+            "subdomain_id": "e9de18c0-7088-4d30-97be-fffd4d9a720c",
+            "subdomain_label": "加权异常得分"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "a4c9b289-fe9d-4724-86e4-630afe44f239",
+      "candidate_group_id": "a7e05a071e7d10de",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_model_only",
+        "sample_name": "dfdc_fake_0055.jpg",
+        "decision_fake_score": 0.752
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "图像分析",
+        "subdomain_name": "综合异常得分",
+        "canonical_name": "ensemble_anomaly_score",
+        "describe": "综合异常得分",
+        "candidate_subdomain_id": "efd9a1aa-0b20-4b2d-a2c0-696e807b2e72"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "weighted_ensemble_score",
+        "subdomain_id": "efd9a1aa-0b20-4b2d-a2c0-696e807b2e72",
+        "subdomain_label": "综合异常得分",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.9,
+        "activation_threshold": 0.6,
+        "context_detector": "AppearanceDetector",
+        "context_feature": "lighting_conflict",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "综合得分用于检测异常",
+        "mapping_rationale": "综合得分高可能指示异常",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.62,
+        "weight": 1,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "3f992fd4-f3cc-4699-88c7-dc5e513801d2",
+      "candidate_group_id": "3a12a14cafdae666",
+      "status": "promoted",
+      "approval_state": "approved",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "一致性分析",
+        "subdomain_name": "检测器一致性",
+        "canonical_name": "detector_consistency",
+        "describe": "检测器间一致性得分",
+        "candidate_subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "detector_agreement",
+        "subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+        "subdomain_label": "检测器一致性",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.35,
+        "activation_threshold": 0.55,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "检测器间一致性是判断假样本的关键",
+        "mapping_rationale": "映射到检测器一致性以增强决策",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.55,
+        "weight": 0.35,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0
+      },
+      "benchmarks": {
+        "quick": {
+          "dataset_root": "/root/pycode/graph_detect/Datasets/Test",
+          "sample_per_class": 10,
+          "overlay_logs": [
+            {
+              "cleanup_token": "benchmark-overlay-062ff207-ef6a-47dc-a7ef-34db4d4058f7",
+              "specific_domain_reused": false,
+              "specific_domain_name": "一致性分析",
+              "subdomain_matched": 0,
+              "subdomain_created": 1,
+              "active_subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+              "active_subdomain_name": "检测器一致性",
+              "temporary_overlay": true
+            }
+          ],
+          "summary": {
+            "total_samples": 20,
+            "valid_predictions": 20,
+            "accuracy_valid": 0.95,
+            "balanced_accuracy": 0.95,
+            "f1_fake": 0.9523809523809523,
+            "precision_fake": 0.9090909090909091,
+            "recall_fake": 1.0,
+            "specificity_real": 0.9
+          },
+          "audit_summary": {
+            "total_records": 20,
+            "reasoning_type_coverage": 1.0,
+            "diagnostic_chain_coverage": 1.0,
+            "needs_review_rate": 0.1,
+            "risk_level_distribution": {
+              "medium": 2,
+              "none": 18
+            },
+            "reasoning_type_distribution": {
+              "anomaly_evidence": 11,
+              "counter_evidence": 9
+            },
+            "avg_diagnostic_chain_len": 4.1,
+            "evidence_hit_rate": 1.0,
+            "evidence_hit_rate_valid": 1.0,
+            "fake_evidence_hit_rate": 1.0,
+            "high_score_no_evidence_rate": 0.0,
+            "unresolved_subdomain_rate": 0.0,
+            "avg_evidence_alignment_score": 0.6821680500000001,
+            "joint_evidence_correct_rate": 0.95,
+            "fake_joint_evidence_recall": 1.0
+          },
+          "threshold_calibration": {
+            "threshold": 0.13,
+            "valid_count": 20,
+            "tp": 10,
+            "tn": 9,
+            "fp": 1,
+            "fn": 0,
+            "accuracy_valid": 0.95,
+            "balanced_accuracy": 0.95,
+            "precision_fake": 0.9090909090909091,
+            "recall_fake": 1.0,
+            "specificity_real": 0.9,
+            "average_current_threshold": 0.5
+          },
+          "passed": true,
+          "decision_profile": null
+        },
+        "formal": null
+      },
+      "promotion": {
+        "eligible": true,
+        "promoted_at": "2026-04-16T15:32:50.286713+00:00",
+        "active_specific_domain": "一致性分析",
+        "active_subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+        "active_subdomain_name": "检测器一致性",
+        "last_log": {
+          "candidate_id": "3f992fd4-f3cc-4699-88c7-dc5e513801d2",
+          "mapping_key": "MetaEnsemble:detector_agreement",
+          "mapping_before": {
+            "subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+            "subdomain_label": "检测器一致性"
+          },
+          "graph_merge": {
+            "specific_domain_reused": false,
+            "specific_domain_name": "一致性分析",
+            "subdomain_matched": 0,
+            "subdomain_created": 1,
+            "semantic_threshold": 0.9
+          },
+          "active_graph": {
+            "main_domain": "域泛化",
+            "specific_domain": "一致性分析",
+            "specific_id": "1af437b7-ba2a-5361-9c28-726a210847e1",
+            "subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+            "subdomain_name": "检测器一致性",
+            "canonical_name": "detector_consistency"
+          },
+          "mapping_after": {
+            "subdomain_id": "0083070b-1378-4f3c-a1b2-ed3d13b33c2f",
+            "subdomain_label": "检测器一致性"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "2c24e32f-9961-4df5-9df2-d8c966f97c2c",
+      "candidate_group_id": "3a12a14cafdae666",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "一致性分析",
+        "subdomain_name": "异常一致性",
+        "canonical_name": "anomaly_consistency",
+        "describe": "异常检测器一致性得分",
+        "candidate_subdomain_id": "020621d4-88e2-47a6-88d2-51d35100a6a9"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "detector_agreement",
+        "subdomain_id": "020621d4-88e2-47a6-88d2-51d35100a6a9",
+        "subdomain_label": "异常一致性",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.35,
+        "activation_threshold": 0.55,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "异常一致性得分反映异常检测器间的一致性",
+        "mapping_rationale": "映射到异常一致性以增强异常检测",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.55,
+        "weight": 0.35,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "00cf9961-cdfd-4261-b288-c0a6e98da7a3",
+      "candidate_group_id": "f271f0e145390e72",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "异常检测",
+        "subdomain_name": "异常覆盖率",
+        "canonical_name": "anomaly_coverage_rate",
+        "describe": "异常检测覆盖率",
+        "candidate_subdomain_id": "60962e91-a969-4198-85ce-5e989134edf8"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "anomaly_coverage",
+        "subdomain_id": "60962e91-a969-4198-85ce-5e989134edf8",
+        "subdomain_label": "异常覆盖率",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.7,
+        "activation_threshold": 0.6,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "异常覆盖率反映检测器覆盖异常的能力",
+        "mapping_rationale": "映射到异常覆盖率以增强异常检测",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+        "current_subdomain_label": "五官不对称异常",
+        "activation_threshold": 0.6,
+        "weight": 0.7,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "1448f8ee-0f66-4999-8fdf-f0847f48ab99",
+      "candidate_group_id": "f271f0e145390e72",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "异常检测",
+        "subdomain_name": "异常检测广度",
+        "canonical_name": "anomaly_detection_breadth",
+        "describe": "异常检测广度",
+        "candidate_subdomain_id": "09b4d8b1-c32b-45c3-a210-2b2897aa12cd"
+      },
+      "mapping_candidate": {
+        "detector": "MetaEnsemble",
+        "feature": "anomaly_coverage",
+        "subdomain_id": "09b4d8b1-c32b-45c3-a210-2b2897aa12cd",
+        "subdomain_label": "异常检测广度",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.7,
+        "activation_threshold": 0.6,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "异常检测广度衡量检测器覆盖异常的范围",
+        "mapping_rationale": "映射到异常检测广度以增强检测",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "rule_disabled",
+        "current_subdomain_id": "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+        "current_subdomain_label": "五官不对称异常",
+        "activation_threshold": 0.6,
+        "weight": 0.7,
+        "context_detector": "",
+        "context_feature": "",
+        "context_min_value": 0.0
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "aaa5633b-64e6-4f18-8b5d-78e8559d6916",
+      "candidate_group_id": "eb852c58dbf79eb2",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "频域分析",
+        "subdomain_name": "高频能量",
+        "canonical_name": "high_frequency_energy",
+        "describe": "高频能量特征",
+        "candidate_subdomain_id": "9fa9fd29-fa69-493a-8689-afcc9246316d"
+      },
+      "mapping_candidate": {
+        "detector": "FFTDetector",
+        "feature": "high_freq_energy",
+        "subdomain_id": "9fa9fd29-fa69-493a-8689-afcc9246316d",
+        "subdomain_label": "高频能量",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.7,
+        "activation_threshold": 0.62,
+        "context_detector": "CalibratedVision",
+        "context_feature": "fake_probability",
+        "context_min_value": 0.73,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "高频能量反映图像的高频细节",
+        "mapping_rationale": "映射到高频能量以增强频域分析",
+        "rank": 1
+      },
+      "existing_rule_snapshot": {
+        "status": "blocked_by_threshold",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.62,
+        "weight": 0.7,
+        "context_detector": "CalibratedVision",
+        "context_feature": "fake_probability",
+        "context_min_value": 0.73
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    },
+    {
+      "candidate_id": "a231fb70-c23b-42ab-9cda-dc08d6864bf3",
+      "candidate_group_id": "eb852c58dbf79eb2",
+      "status": "pending",
+      "approval_state": "draft",
+      "source": {
+        "source_type": "detect_candidate",
+        "decision_profile": "",
+        "reasoning_type": "anomaly_evidence",
+        "sample_name": "fake_0.jpg",
+        "decision_fake_score": 0.808
+      },
+      "graph_candidate": {
+        "main_domain": "域泛化",
+        "specific_domain": "频域分析",
+        "subdomain_name": "高频异常",
+        "canonical_name": "high_frequency_anomaly",
+        "describe": "高频异常特征",
+        "candidate_subdomain_id": "d811c467-22c7-4a6d-8d6f-ab80e440637c"
+      },
+      "mapping_candidate": {
+        "detector": "FFTDetector",
+        "feature": "high_freq_energy",
+        "subdomain_id": "d811c467-22c7-4a6d-8d6f-ab80e440637c",
+        "subdomain_label": "高频异常",
+        "sigmoid_k": 8.0,
+        "sigmoid_x0": 0.5,
+        "weight": 0.7,
+        "activation_threshold": 0.62,
+        "context_detector": "CalibratedVision",
+        "context_feature": "fake_probability",
+        "context_min_value": 0.73,
+        "evidence_enabled": false
+      },
+      "llm": {
+        "prompt_version": "detect_candidate_mapping_v1",
+        "feature_rationale": "高频异常特征反映图像的高频异常",
+        "mapping_rationale": "映射到高频异常以增强频域异常检测",
+        "rank": 2
+      },
+      "existing_rule_snapshot": {
+        "status": "blocked_by_threshold",
+        "current_subdomain_id": "c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1f",
+        "current_subdomain_label": "虚假高分辨率",
+        "activation_threshold": 0.62,
+        "weight": 0.7,
+        "context_detector": "CalibratedVision",
+        "context_feature": "fake_probability",
+        "context_min_value": 0.73
+      },
+      "benchmarks": {
+        "quick": null,
+        "formal": null
+      },
+      "promotion": {
+        "eligible": false,
+        "promoted_at": null
+      }
+    }
+  ]
 }

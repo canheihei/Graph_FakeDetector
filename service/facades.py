@@ -305,6 +305,17 @@ class DetectionFacade:
             evidence=evidence,
             evidence_diagnostics=evidence_diagnostics,
         )
+        explain_summary = self._build_explain_summary(
+            decision=decision,
+            evidence=evidence,
+            reasoning_type=reasoning_type,
+            needs_review=needs_review,
+            review_reasons=review_reasons,
+            risk_level=risk_level,
+            detector_signals=detector_signals,
+            evidence_diagnostics=evidence_diagnostics,
+            diagnostic_chain=diagnostic_chain,
+        )
 
         return {
             "label": decision["label"],
@@ -333,6 +344,7 @@ class DetectionFacade:
             "candidate_generation_available": candidate_generation_available,
             "candidate_context": candidate_context,
             "visualizations": self._collect_visualizations(detector_results),
+            "explain_summary": explain_summary,
         }
 
     def _merge_decisions(
@@ -852,6 +864,199 @@ class DetectionFacade:
             chain.append(f"Review required due to: {', '.join(review_reasons)}.")
 
         return chain
+
+    @staticmethod
+    def _humanize_detector_name(name: str) -> str:
+        mapping = {
+            "CalibratedVision": "主干视觉检测器",
+            "MetaEnsemble": "多检测器集成信号",
+            "FFTDetector": "频域异常检测",
+            "AppearanceDetector": "外观结构检测",
+            "BoundaryConsistency": "边界一致性检测",
+            "ViT": "Transformer 检测器",
+            "EfficientNetB4": "EfficientNet 检测器",
+        }
+        return mapping.get(str(name or "").strip(), str(name or "").strip() or "检测器")
+
+    @staticmethod
+    def _humanize_review_reason(reason: str) -> str:
+        mapping = {
+            "out_of_scope_input": "输入内容超出当前人脸检测适用范围，建议人工复核。",
+            "graph_rules_not_activated": "图谱规则未被激活，当前证据链不足，建议人工复核。",
+            "real_without_graph_evidence": "当前判为真实，但缺少图谱反证支撑，建议人工复核。",
+            "near_decision_boundary": "当前分数接近决策边界，结论稳定性不足，建议人工复核。",
+            "elevated_fake_probability_for_real": "虽然判为真实，但伪造概率仍偏高，建议人工复核。",
+            "low_portrait_confidence": "图像主体质量或人脸可见性较弱，建议人工复核。",
+            "fake_without_graph_evidence": "当前判为伪造，但未命中稳定图谱证据，建议人工复核。",
+        }
+        return mapping.get(reason, f"存在审计风险：{reason}，建议人工复核。")
+
+    @classmethod
+    def _suggest_reviewer_focus(
+        cls,
+        review_reasons: List[str],
+        evidence: List[Dict[str, Any]],
+    ) -> List[str]:
+        focuses: List[str] = []
+        if any(reason in review_reasons for reason in {"fake_without_graph_evidence", "graph_rules_not_activated"}):
+            focuses.append("优先检查边界区域、纹理不连续和局部合成痕迹。")
+        if "near_decision_boundary" in review_reasons:
+            focuses.append("优先核对临界区域是否存在真假都可能出现的模糊特征。")
+        if "low_portrait_confidence" in review_reasons:
+            focuses.append("优先确认人脸区域是否清晰、完整，避免低质量输入误导判断。")
+        if evidence:
+            top_evidence = evidence[0]
+            sub_name = (
+                (top_evidence.get("sub_domain", {}) or {}).get("name")
+                or top_evidence.get("subdomain_name")
+                or "命中证据区域"
+            )
+            focuses.append(f"可重点复核图谱命中的“{sub_name}”相关区域。")
+        return focuses[:3]
+
+    @classmethod
+    def _build_explain_summary(
+        cls,
+        *,
+        decision: Dict[str, Any],
+        evidence: List[Dict[str, Any]],
+        reasoning_type: str,
+        needs_review: bool,
+        review_reasons: List[str],
+        risk_level: str,
+        detector_signals: List[Dict[str, Any]],
+        evidence_diagnostics: Dict[str, Any],
+        diagnostic_chain: List[str],
+    ) -> Dict[str, Any]:
+        label = str(decision.get("label", "") or "").strip().upper()
+        confidence = float(decision.get("confidence", 0.0) or 0.0)
+        fake_score = float(decision.get("decision_fake_score", 0.0) or 0.0)
+        threshold = float(decision.get("decision_threshold", 0.5) or 0.5)
+        margin_raw = decision.get("decision_margin")
+        margin = float(margin_raw if margin_raw is not None else fake_score - threshold)
+        alignment = float(decision.get("evidence_alignment_score", 0.0) or 0.0)
+        graph_weight = float(decision.get("graph_influence_weight", 0.0) or 0.0)
+
+        if label == "FAKE":
+            title = "判定为疑似伪造"
+        elif label == "REAL":
+            title = "判定为较高真实性"
+        elif label in {"NON_PORTRAIT", "OUT_OF_SCOPE"}:
+            title = "当前样本不适合直接给出真实性结论"
+        else:
+            title = "当前样本结论不明确"
+
+        if evidence:
+            short_reason = "模型异常信号与图谱证据方向一致，系统给出当前结论。"
+        elif label == "FAKE":
+            short_reason = "当前结论主要来自模型异常分数，图谱证据不足。"
+        elif label == "REAL":
+            short_reason = "当前结论主要来自模型稳定信号，图谱侧未发现强反证。"
+        else:
+            short_reason = "当前样本需要结合输入条件和审计信息综合理解。"
+
+        sorted_signals = sorted(
+            detector_signals,
+            key=lambda item: float(item.get("score", 0.0)) * float(item.get("weight", 0.0)),
+            reverse=True,
+        )
+        top_signal_names = [cls._humanize_detector_name(item.get("name", "")) for item in sorted_signals[:2]]
+        top_reasons: List[str] = []
+        if top_signal_names:
+            top_reasons.append(f"{'、'.join(top_signal_names)}同时给出较强异常响应。")
+        if evidence:
+            evidence_names = []
+            for item in evidence[:2]:
+                sub_name = (
+                    (item.get("sub_domain", {}) or {}).get("name")
+                    or item.get("subdomain_name")
+                    or item.get("subdomain")
+                    or "未知子域"
+                )
+                evidence_names.append(str(sub_name))
+            top_reasons.append(f"图谱命中“{'、'.join(evidence_names)}”等稳定伪造证据。")
+        else:
+            top_reasons.append("当前未命中稳定图谱证据，本次结论主要依赖模型异常分数。")
+        if abs(margin) >= 0.12:
+            top_reasons.append(
+                f"当前决策分数与阈值差距明显（{fake_score:.2f} vs {threshold:.2f}），不是边界样本。"
+            )
+        else:
+            top_reasons.append(
+                f"当前决策分数接近阈值（{fake_score:.2f} vs {threshold:.2f}），属于需要谨慎解释的样本。"
+            )
+        while len(top_reasons) < 3:
+            top_reasons.append("系统已保留完整审计链，后续可继续追溯原始证据。")
+
+        if evidence:
+            decision_path_summary = "输入图像 -> 检测器发现异常 -> 图谱证据参与 -> 与模型结论一致 -> 输出当前判定"
+        else:
+            decision_path_summary = "输入图像 -> 检测器发现异常 -> 未命中稳定图谱证据 -> 依赖模型分数判定 -> 输出当前判定"
+
+        review_reasons_human = [cls._humanize_review_reason(item) for item in review_reasons]
+        if not review_reasons_human:
+            review_reasons_human = ["当前结论未触发高风险复核条件，可直接查看证据摘要。"]
+
+        return {
+            "verdict_summary": {
+                "title": title,
+                "short_reason": short_reason,
+                "confidence_text": f"{confidence * 100:.1f}%",
+                "review_badge": "建议人工复核" if needs_review else "结果稳定",
+                "risk_level": risk_level,
+            },
+            "top_reasons": top_reasons[:3],
+            "decision_path": {
+                "summary": "图谱证据参与" in decision_path_summary and decision_path_summary or decision_path_summary,
+                "steps": decision_path_summary.split(" -> "),
+                "reasoning_type": reasoning_type,
+            },
+            "review_summary": {
+                "needs_review": needs_review,
+                "title": "建议人工复核" if needs_review else "当前无需额外复核",
+                "review_reasons_human": review_reasons_human,
+                "reviewer_focus": cls._suggest_reviewer_focus(review_reasons, evidence),
+            },
+            "trace_panels": {
+                "模型证据": [
+                    {
+                        "name": cls._humanize_detector_name(item.get("name", "")),
+                        "score": round(float(item.get("score", 0.0) or 0.0), 4),
+                        "weight": round(float(item.get("weight", 0.0) or 0.0), 4),
+                    }
+                    for item in sorted_signals[:3]
+                ],
+                "图谱证据": [
+                    {
+                        "subdomain": (
+                            (item.get("sub_domain", {}) or {}).get("name")
+                            or item.get("subdomain_name")
+                            or item.get("subdomain")
+                            or "未知子域"
+                        ),
+                        "specific_domain": (
+                            (item.get("specific_domain", {}) or {}).get("name")
+                            or item.get("specific_domain_name")
+                            or "未知专域"
+                        ),
+                        "confidence": round(float(item.get("confidence", 0.0) or 0.0), 4),
+                    }
+                    for item in evidence[:5]
+                ],
+                "决策与风险": {
+                    "label": label,
+                    "fake_score": round(fake_score, 4),
+                    "threshold": round(threshold, 4),
+                    "margin": round(margin, 4),
+                    "evidence_alignment_score": round(alignment, 4),
+                    "graph_influence_weight": round(graph_weight, 4),
+                    "requested_subdomains": int(evidence_diagnostics.get("requested_subdomains", 0) or 0),
+                    "unresolved_subdomains": int(evidence_diagnostics.get("unresolved_subdomains", 0) or 0),
+                    "risk_level": risk_level,
+                },
+                "详细审计记录": list(diagnostic_chain or []),
+            },
+        }
 
     @staticmethod
     def _estimate_signal_reliability(result) -> float:

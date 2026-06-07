@@ -204,11 +204,11 @@ DETECTOR_CONFIGS: Dict[str, DetectorConfig] = {
 META_ENSEMBLE_CONFIG = MetaEnsembleConfig()
 DETECTION_DECISION_CONFIG = DetectionDecisionConfig(
     domain_threshold_profiles={
-        # External-domain calibration defaults (2026-04-11, dg_round5 + sample300).
-        "celeb_df": 0.61,
-        "celebdf": 0.61,
-        "dfdc": 0.48,
-        "wilddeepfake": 0.11,
+        # External-domain calibration defaults (2026-04-20, round7_rebalanced + sample1200/full benchmark).
+        "celeb_df": 0.42,
+        "celebdf": 0.42,
+        "dfdc": 0.47,
+        "wilddeepfake": 0.12,
     }
 )
 CANDIDATE_REVIEW_CONFIG = CandidateReviewConfig(

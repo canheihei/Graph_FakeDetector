@@ -418,6 +418,30 @@ class GraphSemanticGovernance:
     def __init__(self, neo4j_client):
         self._neo4j_client = neo4j_client
 
+    def _resolve_default_main_domain(self) -> tuple[str, str]:
+        main_domains = self._neo4j_client.list_main_domains()
+        if not main_domains:
+            return "未分类主域", ""
+
+        for domain in main_domains:
+            if str(domain.get("name", "") or "").strip() == "域泛化":
+                return domain["name"], str(domain.get("describe", "") or "")
+
+        non_placeholder_domains = [
+            domain
+            for domain in main_domains
+            if str(domain.get("name", "") or "").strip() not in {"", "未分类主域", "未连接主域"}
+        ]
+        if len(non_placeholder_domains) == 1:
+            domain = non_placeholder_domains[0]
+            return domain["name"], str(domain.get("describe", "") or "")
+
+        if len(main_domains) == 1:
+            domain = main_domains[0]
+            return domain["name"], str(domain.get("describe", "") or "")
+
+        return "未分类主域", ""
+
     def resolve_specific_domain(
         self,
         candidate_name: str,
@@ -440,8 +464,17 @@ class GraphSemanticGovernance:
                 return None
             matched = domains[0]
 
-        main_name = matched.get("main_domain") or self._neo4j_client.get_main_domain_name_by_specific_domain(matched["name"]) or "未分类主域"
-        main_describe = matched.get("main_describe") or self._neo4j_client.get_main_domain_describe(main_name) or ""
+        default_main_name, default_main_describe = self._resolve_default_main_domain()
+        main_name = (
+            matched.get("main_domain")
+            or self._neo4j_client.get_main_domain_name_by_specific_domain(matched["name"])
+            or default_main_name
+        )
+        main_describe = (
+            matched.get("main_describe")
+            or self._neo4j_client.get_main_domain_describe(main_name)
+            or default_main_describe
+        )
         return ResolvedSpecificDomain(
             id=matched.get("id", str(uuid.uuid4())),
             name=matched["name"],
