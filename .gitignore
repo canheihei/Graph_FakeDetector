@@ -9,6 +9,9 @@ node_modules/
 .codex*
 .winscp*
 AGENTS.md
+CLAUDE.md
+claude.md
+docs/
 paraphrase-multilingual-MiniLM-L12-v2/
 test/
 uploads/
@@ -16,8 +19,6 @@ Datasets/uploads/
 Datasets/
 reports/
 weights/
-claude.md
-CLAUDE.md
 config.py
 !.env.example
 
