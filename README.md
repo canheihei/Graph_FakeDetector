@@ -19,7 +19,7 @@
 
 ```bash
 # 1. 克隆仓库
-git clone <repo-url>
+git clone https://github.com/canheihei/Graph_FakeDetector.git
 cd Graph_FakeDetector
 
 # 2. 创建虚拟环境
@@ -64,7 +64,7 @@ curl -X POST http://localhost:5000/system/reset_baseline \
 ### 1. 克隆仓库
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/canheihei/Graph_FakeDetector.git
 cd Graph_FakeDetector
 ```
 
