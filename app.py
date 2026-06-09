@@ -49,6 +49,7 @@ ALLOWED_PAGES = {
     "graph-iteration.html",
     "image-recognition.html",
     "visualization.html",
+    "report-history.html",
     "evidence-chain-report.html",
 }
 
@@ -970,7 +971,7 @@ def serve_report_asset(report_name: str, asset_path: str):
 def render_page(page="index.html"):
     if page not in ALLOWED_PAGES:
         return render_template("404.html"), 404
-    if page == "index.html":
+    if page in {"index.html", "report-history.html"}:
         return render_template(page, report_gallery=_build_report_gallery_payload())
     return render_template(page)
 

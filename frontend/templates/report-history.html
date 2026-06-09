@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>历史报告 - 破壁者</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .control-shell {
+            background:
+                linear-gradient(90deg, rgba(148, 163, 184, .08) 1px, transparent 1px),
+                linear-gradient(rgba(148, 163, 184, .08) 1px, transparent 1px),
+                #07111f;
+            background-size: 36px 36px;
+        }
+    </style>
+</head>
+<body class="min-h-full control-shell font-sans text-slate-100">
+{% set gallery = report_gallery or {} %}
+{% set reports = gallery.get('reports', []) %}
+{% set overview = gallery.get('overview', {}) %}
+<main class="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
+    <nav class="flex items-center justify-between border-b border-white/10 pb-5">
+        <div>
+            <div class="text-sm font-bold tracking-[0.24em] text-cyan-200">破壁者</div>
+            <div class="mt-1 text-xs text-slate-400">历史报告浏览</div>
+        </div>
+        <a href="index.html"
+           class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10">
+            返回主页
+        </a>
+    </nav>
+
+    <header class="py-7">
+        <div class="text-xs font-bold tracking-[0.22em] text-emerald-200">Report Archive</div>
+        <h1 class="mt-3 text-4xl font-extrabold tracking-normal text-white">历史报告</h1>
+        <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+            按报告更新时间展示 benchmark 产物，可直接打开报告页面、metrics.json 或 predictions.csv。
+        </p>
+    </header>
+
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-5">
+            <div class="text-xs tracking-[0.18em] text-emerald-200">报告数量</div>
+            <div class="mt-3 text-3xl font-extrabold text-white">{{ overview.get('report_count', reports|length) }}</div>
+        </div>
+        <div class="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-5">
+            <div class="text-xs tracking-[0.18em] text-sky-200">最新准确率</div>
+            <div class="mt-3 text-3xl font-extrabold text-white">{{ '%.2f'|format(overview.get('latest_accuracy_pct', 0)) }}%</div>
+        </div>
+        <div class="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-5">
+            <div class="text-xs tracking-[0.18em] text-amber-200">最新样本规模</div>
+            <div class="mt-3 text-3xl font-extrabold text-white">{{ overview.get('latest_samples', 0) }}</div>
+        </div>
+    </section>
+
+    <section class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {% for report in reports %}
+        {% set metrics = report.get('metrics', {}) %}
+        <article class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <div class="text-xs font-bold tracking-[0.18em] text-emerald-200">#{{ report.get('rank', loop.index) }}</div>
+                    <h2 class="mt-2 truncate text-xl font-bold text-white">{{ report.get('title', report.get('name', '报告')) }}</h2>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">{{ report.get('subtitle', report.get('name', '')) }}</p>
+                    <p class="mt-2 text-xs text-slate-500">更新于 {{ report.get('updated_at_display', '--') }}</p>
+                </div>
+                <div class="shrink-0 text-left sm:text-right">
+                    <div class="text-3xl font-extrabold text-emerald-100">{{ '%.2f'|format(metrics.get('accuracy_valid_pct', 0)) }}%</div>
+                    <div class="mt-1 text-xs text-slate-500">{{ metrics.get('total_samples', 0) }} 样本</div>
+                </div>
+            </div>
+
+            <div class="mt-5 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                    <div class="text-xs text-slate-500">Balanced</div>
+                    <div class="mt-1 font-bold text-white">{{ '%.2f'|format(metrics.get('balanced_accuracy_pct', 0)) }}%</div>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                    <div class="text-xs text-slate-500">Precision Fake</div>
+                    <div class="mt-1 font-bold text-white">{{ '%.2f'|format(metrics.get('precision_fake_pct', 0)) }}%</div>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                    <div class="text-xs text-slate-500">Recall Fake</div>
+                    <div class="mt-1 font-bold text-white">{{ '%.2f'|format(metrics.get('recall_fake_pct', 0)) }}%</div>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                    <div class="text-xs text-slate-500">Errors</div>
+                    <div class="mt-1 font-bold text-white">{{ metrics.get('error_count', 0) }}</div>
+                </div>
+            </div>
+
+            <div class="mt-5 flex flex-wrap gap-3">
+                {% if report.get('html_url') %}
+                <a href="{{ report.get('html_url') }}"
+                   class="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-300">
+                    打开报告
+                </a>
+                {% endif %}
+                {% if report.get('metrics_url') %}
+                <a href="{{ report.get('metrics_url') }}"
+                   class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10">
+                    metrics.json
+                </a>
+                {% endif %}
+                {% if report.get('predictions_url') %}
+                <a href="{{ report.get('predictions_url') }}"
+                   class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10">
+                    predictions.csv
+                </a>
+                {% endif %}
+            </div>
+        </article>
+        {% else %}
+        <div class="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-6 py-12 text-center text-slate-400 xl:col-span-2">
+            暂无可浏览报告。
+        </div>
+        {% endfor %}
+    </section>
+</main>
+</body>
+</html>
